@@ -31,6 +31,7 @@ tracing = "0.1.41"
 tracing-subscriber = "0.3.18"
 utoipa = "5.3.1"
 utoipa-axum = "0.2.0"
+utoipa-swagger-ui = { version = "9.0.2", features = ["vendored"] }
 
 [workspace.package]
 version = "0.4.1"

@@ -77,3 +77,28 @@ cargo build -p contracts --features build --features all --features nonreproduci
 ```
 
 For more details, refer to the [Hyli documentation](https://docs.hyli.org).
+
+## Registry API
+
+Upload requires an API key and uses multipart form data:
+
+- `POST /api/elfs/:contract` (headers: `x-api-key`)
+  - fields: `program_id`, `metadata` (JSON: `{ "toolchain": "...", "commit": "...", "zkvm": "..." }`), `file`
+- `GET /api/elfs` (list all contracts + programs)
+- `GET /api/elfs/:contract` (list programs for a contract)
+- `GET /api/elfs/:contract/:program_id` (download the ELF)
+
+The registry stores an `index.json` at the storage root plus per-program metadata sidecars
+(`:contract/:program_id.json`) to allow rebuilding the index if needed.
+
+## Registry Configuration
+
+Configuration keys (TOML or `HYLI__...` env vars):
+
+- `api_key`: required for uploads.
+- `storage_backend`: `"local"` (default) or `"gcs"`.
+- `gcs_bucket`: required when using GCS.
+- `gcs_prefix`: optional namespace prefix inside the bucket.
+- `local_storage_directory`: optional override for local storage path.
+- `data_directory`: base data directory (default `"data"`).
+- `rest_server_max_body_size`: set to `0` for unlimited upload size.

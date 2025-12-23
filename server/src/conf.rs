@@ -9,6 +9,16 @@ pub struct Conf {
     pub log_format: String,
     /// Directory name to store node state.
     pub data_directory: PathBuf,
+    /// API key used to authenticate uploads.
+    pub api_key: String,
+    /// Storage backend ("local" or "gcs").
+    pub storage_backend: String,
+    /// GCS bucket name when storage_backend = "gcs".
+    pub gcs_bucket: Option<String>,
+    /// Optional GCS prefix to namespace objects.
+    pub gcs_prefix: Option<String>,
+    /// Optional override for local storage directory.
+    pub local_storage_directory: Option<PathBuf>,
     /// When running only the indexer, the address of the DA server to connect to
     pub rest_server_port: u16,
     pub rest_server_max_body_size: usize,

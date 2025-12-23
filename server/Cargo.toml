@@ -8,16 +8,25 @@ client-sdk = { workspace = true, features = ["risc0", "rest"] }
 hyli-modules = { workspace = true }
 
 config = { workspace = true, default-features = false, features = ["toml"] }
-axum = { workspace = true }
+axum = { workspace = true, features = ["multipart"] }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true }
 tower-http = { workspace = true, features = ["cors"] }
 anyhow = { workspace = true }
+async-trait = "0.1.87"
+bytes = "1.10.0"
+chrono = { version = "0.4.40", default-features = false, features = [
+  "clock",
+  "serde",
+] }
+google-cloud-storage = "0.24.0"
 
 tracing = { workspace = true }
 clap = { workspace = true }
 utoipa-axum = { workspace = true }
 utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true, features = ["vendored"] }
 
 prometheus = { workspace = true }
+opentelemetry = { workspace = true }

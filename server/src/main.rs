@@ -11,12 +11,13 @@ use hyli_modules::{
     },
     utils::logger::setup_otlp,
 };
-use prometheus::Registry;
 use sdk::{api::NodeInfo, info};
 use std::sync::{Arc, Mutex};
 
 mod app;
 mod conf;
+mod registry;
+mod storage;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -51,6 +52,13 @@ async fn main() -> Result<()> {
     )
     .context("setting up tracing")?;
 
+    let mut config = config;
+    if config.api_key.trim().is_empty() {
+        anyhow::bail!("api_key must be set to enable authenticated uploads");
+    }
+    if config.rest_server_max_body_size == 0 {
+        config.rest_server_max_body_size = usize::MAX;
+    }
     let config = Arc::new(config);
 
     if args.clean_data_directory && std::fs::exists(&config.data_directory).unwrap_or(false) {
@@ -73,6 +81,7 @@ async fn main() -> Result<()> {
 
     let app_ctx = Arc::new(AppModuleCtx {
         api: api_ctx.clone(),
+        config: config.clone(),
     });
 
     handler.build_module::<AppModule>(app_ctx.clone()).await?;
@@ -96,7 +105,7 @@ async fn main() -> Result<()> {
         .build_module::<RestApi>(RestApiRunContext {
             port: args.server_port.unwrap_or(config.rest_server_port),
             max_body_size: config.rest_server_max_body_size,
-            registry: Registry::new(),
+            registry: prometheus::default_registry().clone(),
             router,
             openapi,
             info: NodeInfo {

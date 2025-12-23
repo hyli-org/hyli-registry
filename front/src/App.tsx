@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { WalletProvider, HyliWallet, useWallet } from "hyli-wallet";
-import './App.css';
-import './WalletStyles.css';
+import "./App.css";
+import "./WalletStyles.css";
 
 interface ContractState {
   state: unknown;
@@ -10,38 +10,47 @@ interface ContractState {
 
 function ScaffoldApp() {
   const { logout, wallet, createIdentityBlobs } = useWallet();
-  const [contract1State, setContract1State] = useState<ContractState | null>(null);
+  const [contract1State, setContract1State] = useState<ContractState | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
   const [initialResult, setInitialResult] = useState<string | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<string | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<string | null>(
+    null,
+  );
 
   const fetchContractState = async (contractName: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER_BASE_URL}/v1/indexer/contract/${contractName}/state`);
+      const response = await fetch(
+        `${import.meta.env.VITE_SERVER_BASE_URL}/v1/indexer/contract/${contractName}/state`,
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP error ${response.status}: ${errorText || response.statusText}`);
+        throw new Error(
+          `HTTP error ${response.status}: ${errorText || response.statusText}`,
+        );
       }
 
       const text = await response.text();
       if (!text) {
-        throw new Error('Empty response');
+        throw new Error("Empty response");
       }
 
       const data = JSON.parse(text);
       return { state: data };
     } catch (error) {
       console.error(`Error fetching ${contractName} state:`, error);
-      return { state: null, error: error instanceof Error ? error.message : String(error) };
+      return {
+        state: null,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   };
 
   useEffect(() => {
     const fetchStates = async () => {
-      const [state1] = await Promise.all([
-        fetchContractState('contract1'),
-      ]);
+      const [state1] = await Promise.all([fetchContractState("contract1")]);
       setContract1State(state1);
     };
 
@@ -57,33 +66,39 @@ function ScaffoldApp() {
 
     while (attempts < maxAttempts) {
       try {
-        const response = await fetch(`${import.meta.env.VITE_NODE_BASE_URL}/v1/indexer/transaction/hash/${txHash}`);
+        const response = await fetch(
+          `${import.meta.env.VITE_NODE_BASE_URL}/v1/indexer/transaction/hash/${txHash}`,
+        );
         if (!response.ok) {
           throw new Error(`HTTP error ${response.status}`);
         }
 
         const data = await response.json();
         if (data.transaction_status === "Success") {
-          setConfirmationResult(`Transaction confirmed successful! Hash: ${txHash}`);
+          setConfirmationResult(
+            `Transaction confirmed successful! Hash: ${txHash}`,
+          );
           return;
         }
 
         // Wait 1 second before next attempt
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         attempts++;
       } catch (error) {
-        console.error('Error polling transaction:', error);
+        console.error("Error polling transaction:", error);
         // Continue polling even if there's an error
       }
     }
 
-    setConfirmationResult(`Transaction ${txHash} timed out after ${maxAttempts} seconds`);
+    setConfirmationResult(
+      `Transaction ${txHash} timed out after ${maxAttempts} seconds`,
+    );
   };
 
   const sendBlobTx = async () => {
-    setInitialResult('');
+    setInitialResult("");
     if (!wallet?.address) {
-      setInitialResult('Wallet not connected');
+      setInitialResult("Wallet not connected");
       setConfirmationResult(null);
       return;
     }
@@ -95,18 +110,21 @@ function ScaffoldApp() {
       const [blob0, blob1] = createIdentityBlobs();
 
       const headers = new Headers();
-      headers.append('content-type', 'application/json');
-      headers.append('x-user', wallet.address);
-      headers.append('x-session-key', 'test-session');
-      headers.append('x-request-signature', 'test-signature');
+      headers.append("content-type", "application/json");
+      headers.append("x-user", wallet.address);
+      headers.append("x-session-key", "test-session");
+      headers.append("x-request-signature", "test-signature");
 
-      const response = await fetch(`${import.meta.env.VITE_SERVER_BASE_URL}/api/increment`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          wallet_blobs: [blob0, blob1]
-        })
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SERVER_BASE_URL}/api/increment`,
+        {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({
+            wallet_blobs: [blob0, blob1],
+          }),
+        },
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -119,8 +137,10 @@ function ScaffoldApp() {
       // Start polling for transaction status
       await pollTransactionStatus(data);
     } catch (error) {
-      console.error('Error sending transaction:', error);
-      setInitialResult(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error("Error sending transaction:", error);
+      setInitialResult(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
       setConfirmationResult(null);
     } finally {
       setLoading(false);
@@ -132,26 +152,26 @@ function ScaffoldApp() {
       <button
         className="logout-button"
         onClick={logout}
-        style={{ position: 'absolute', top: '24px', right: '24px' }}
+        style={{ position: "absolute", top: "24px", right: "24px" }}
       >
         Logout
       </button>
       <div className="app-header">
         <h1 className="app-title">Hyli Contract Interface</h1>
-        <p className="app-subtitle">Monitor and interact with smart contracts</p>
+        <p className="app-subtitle">
+          Monitor and interact with smart contracts
+        </p>
       </div>
       <div className="wallet-info">
         <div className="wallet-address">
           <span className="wallet-label">Connected Wallet:</span>
-          <span className="wallet-value">{wallet?.address || 'Not connected'}</span>
+          <span className="wallet-value">
+            {wallet?.address || "Not connected"}
+          </span>
         </div>
       </div>
-      <button
-        className="blob-button"
-        onClick={sendBlobTx}
-        disabled={loading}
-      >
-        {loading ? 'SENDING...' : 'SEND BLOB TX'}
+      <button className="blob-button" onClick={sendBlobTx} disabled={loading}>
+        {loading ? "SENDING..." : "SEND BLOB TX"}
       </button>
       {initialResult && <div className="result">{initialResult}</div>}
       {confirmationResult && <div className="result">{confirmationResult}</div>}
@@ -161,7 +181,11 @@ function ScaffoldApp() {
           {contract1State?.error ? (
             <div className="error">{contract1State.error}</div>
           ) : (
-            <pre>{contract1State?.state ? JSON.stringify(contract1State.state, null, 2) : 'Loading...'}</pre>
+            <pre>
+              {contract1State?.state
+                ? JSON.stringify(contract1State.state, null, 2)
+                : "Loading..."}
+            </pre>
           )}
         </div>
       </div>
@@ -179,9 +203,7 @@ function LandingPage() {
         <p className="hero-subtitle">
           A starting point for your next blockchain application
         </p>
-        <HyliWallet
-          providers={["password", "google", "github"]}
-        />
+        <HyliWallet providers={["password", "google", "github"]} />
       </div>
       <div className="floating-shapes">
         <div className="shape shape-1"></div>
@@ -217,7 +239,7 @@ function App() {
     >
       <AppContent />
     </WalletProvider>
-  )
+  );
 }
 
 export default App;

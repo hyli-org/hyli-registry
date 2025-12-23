@@ -1,5 +1,12 @@
 id = "hyli-registry"
 log_format = "full"
 
+data_directory = "data"
+api_key = ""
+storage_backend = "local"
+gcs_bucket = ""
+gcs_prefix = ""
+local_storage_directory = ""
+
 rest_server_port = 5555
-rest_server_max_body_size = 10_485_760 # 10 MB
+rest_server_max_body_size = 0 # 0 means no limit
