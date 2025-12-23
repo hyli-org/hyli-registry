@@ -13,7 +13,7 @@ use client_sdk::contract_indexer::AppError;
 
 use hyli_modules::{
     bus::SharedMessageBus,
-    module_bus_client, module_handle_messages,
+    log_error, module_bus_client, module_handle_messages,
     modules::{BuildApiContextInner, Module},
 };
 use tower_http::cors::{Any, CorsLayer};
@@ -139,6 +139,7 @@ struct UploadResponse {
     metadata: ProgramMetadata,
 }
 
+#[tracing::instrument(skip(state, headers, multipart))]
 async fn upload_elf(
     State(state): State<RouterCtx>,
     Path(contract): Path<String>,
@@ -191,11 +192,14 @@ async fn upload_elf(
     let file_bytes = file_bytes
         .ok_or_else(|| AppError(StatusCode::BAD_REQUEST, anyhow::anyhow!("Missing ELF file")))?;
 
-    let entry = state
-        .registry
-        .upload(&contract, &program_id, metadata, file_bytes)
-        .await
-        .map_err(|err| AppError(StatusCode::INTERNAL_SERVER_ERROR, err))?;
+    let entry = log_error!(
+        state
+            .registry
+            .upload(&contract, &program_id, metadata, file_bytes)
+            .await,
+        "Uploading ELF"
+    )
+    .map_err(|err| AppError(StatusCode::INTERNAL_SERVER_ERROR, err))?;
 
     Ok(Json(UploadResponse {
         program_id: entry.program_id,
@@ -206,6 +210,7 @@ async fn upload_elf(
     }))
 }
 
+#[tracing::instrument(skip(state))]
 async fn list_elfs(
     State(state): State<RouterCtx>,
 ) -> Result<Json<HashMap<String, Vec<ProgramInfo>>>, AppError> {
@@ -213,6 +218,7 @@ async fn list_elfs(
     Ok(Json(contracts))
 }
 
+#[tracing::instrument(skip(state))]
 async fn list_contract(
     State(state): State<RouterCtx>,
     Path(contract): Path<String>,
@@ -227,6 +233,7 @@ async fn list_contract(
     }
 }
 
+#[tracing::instrument(skip(state))]
 async fn download_elf(
     State(state): State<RouterCtx>,
     Path((contract, program_id)): Path<(String, String)>,

@@ -1,244 +1,270 @@
-import { useState, useEffect } from "react";
-import { WalletProvider, HyliWallet, useWallet } from "hyli-wallet";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import "./App.css";
-import "./WalletStyles.css";
 
-interface ContractState {
-  state: unknown;
-  error?: string;
-}
+type ProgramMetadata = {
+  toolchain: string;
+  commit: string;
+  zkvm: string;
+};
 
-function ScaffoldApp() {
-  const { logout, wallet, createIdentityBlobs } = useWallet();
-  const [contract1State, setContract1State] = useState<ContractState | null>(
-    null,
+type ProgramInfo = {
+  program_id: string;
+  size_bytes: number;
+  uploaded_at: string;
+  metadata: ProgramMetadata;
+};
+
+type RegistryIndex = Record<string, ProgramInfo[]>;
+
+const baseUrl = import.meta.env.VITE_SERVER_BASE_URL || "";
+
+const buildUrl = (path: string) => {
+  if (!baseUrl) {
+    return path;
+  }
+  return `${baseUrl}${path}`;
+};
+
+const formatBytes = (value: number) => {
+  if (value <= 0) {
+    return "0 B";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const exponent = Math.min(
+    Math.floor(Math.log(value) / Math.log(1024)),
+    units.length - 1,
   );
-  const [loading, setLoading] = useState(false);
-  const [initialResult, setInitialResult] = useState<string | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<string | null>(
-    null,
-  );
+  const scaled = value / Math.pow(1024, exponent);
+  const digits = scaled >= 10 ? 1 : 2;
+  return `${scaled.toFixed(digits)} ${units[exponent]}`;
+};
 
-  const fetchContractState = async (contractName: string) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SERVER_BASE_URL}/v1/indexer/contract/${contractName}/state`,
-      );
+const formatDate = (value: string | null) => {
+  if (!value) {
+    return "n/a";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `HTTP error ${response.status}: ${errorText || response.statusText}`,
-        );
-      }
+function App() {
+  const [registry, setRegistry] = useState<RegistryIndex>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-      const text = await response.text();
-      if (!text) {
-        throw new Error("Empty response");
-      }
-
-      const data = JSON.parse(text);
-      return { state: data };
-    } catch (error) {
-      console.error(`Error fetching ${contractName} state:`, error);
-      return {
-        state: null,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
-  };
-
-  useEffect(() => {
-    const fetchStates = async () => {
-      const [state1] = await Promise.all([fetchContractState("contract1")]);
-      setContract1State(state1);
-    };
-
-    fetchStates();
-    // Refresh states every minute
-    const interval = setInterval(fetchStates, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const pollTransactionStatus = async (txHash: string): Promise<void> => {
-    const maxAttempts = 30; // 30 seconds timeout
-    let attempts = 0;
-
-    while (attempts < maxAttempts) {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_NODE_BASE_URL}/v1/indexer/transaction/hash/${txHash}`,
-        );
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (data.transaction_status === "Success") {
-          setConfirmationResult(
-            `Transaction confirmed successful! Hash: ${txHash}`,
-          );
-          return;
-        }
-
-        // Wait 1 second before next attempt
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        attempts++;
-      } catch (error) {
-        console.error("Error polling transaction:", error);
-        // Continue polling even if there's an error
-      }
-    }
-
-    setConfirmationResult(
-      `Transaction ${txHash} timed out after ${maxAttempts} seconds`,
-    );
-  };
-
-  const sendBlobTx = async () => {
-    setInitialResult("");
-    if (!wallet?.address) {
-      setInitialResult("Wallet not connected");
-      setConfirmationResult(null);
-      return;
-    }
-
+  const fetchRegistry = async () => {
     setLoading(true);
-    setConfirmationResult(null);
+    setError(null);
     try {
-      // Create identity blobs
-      const [blob0, blob1] = createIdentityBlobs();
-
-      const headers = new Headers();
-      headers.append("content-type", "application/json");
-      headers.append("x-user", wallet.address);
-      headers.append("x-session-key", "test-session");
-      headers.append("x-request-signature", "test-signature");
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SERVER_BASE_URL}/api/increment`,
-        {
-          method: "POST",
-          headers: headers,
-          body: JSON.stringify({
-            wallet_blobs: [blob0, blob1],
-          }),
-        },
-      );
-
+      const response = await fetch(buildUrl("/api/elfs"));
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `HTTP error ${response.status}`);
+        const message = await response.text();
+        throw new Error(message || `HTTP ${response.status}`);
       }
-
-      const data = await response.json();
-      setInitialResult(`Transaction sent! Hash: ${JSON.stringify(data)}`);
-
-      // Start polling for transaction status
-      await pollTransactionStatus(data);
-    } catch (error) {
-      console.error("Error sending transaction:", error);
-      setInitialResult(
-        `Error: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      setConfirmationResult(null);
+      const data = (await response.json()) as RegistryIndex;
+      setRegistry(data || {});
+      setLastUpdated(new Date().toISOString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchRegistry();
+    const interval = setInterval(fetchRegistry, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const stats = useMemo(() => {
+    const entries = Object.entries(registry);
+    let totalPrograms = 0;
+    let totalBytes = 0;
+    let latestUpload: string | null = null;
+    for (const [, programs] of entries) {
+      totalPrograms += programs.length;
+      for (const program of programs) {
+        totalBytes += program.size_bytes;
+        if (!latestUpload || program.uploaded_at > latestUpload) {
+          latestUpload = program.uploaded_at;
+        }
+      }
+    }
+    return {
+      totalContracts: entries.length,
+      totalPrograms,
+      totalBytes,
+      latestUpload,
+    };
+  }, [registry]);
+
+  const filteredContracts = useMemo(() => {
+    const query = filter.trim().toLowerCase();
+    const entries = Object.entries(registry);
+    if (!query) {
+      return entries.sort(([a], [b]) => a.localeCompare(b));
+    }
+    return entries
+      .filter(([contract, programs]) => {
+        if (contract.toLowerCase().includes(query)) {
+          return true;
+        }
+        return programs.some(
+          (program) =>
+            program.program_id.toLowerCase().includes(query) ||
+            program.metadata.toolchain.toLowerCase().includes(query) ||
+            program.metadata.zkvm.toLowerCase().includes(query),
+        );
+      })
+      .sort(([a], [b]) => a.localeCompare(b));
+  }, [registry, filter]);
+
   return (
-    <div className="App">
-      <button
-        className="logout-button"
-        onClick={logout}
-        style={{ position: "absolute", top: "24px", right: "24px" }}
-      >
-        Logout
-      </button>
-      <div className="app-header">
-        <h1 className="app-title">Hyli Contract Interface</h1>
-        <p className="app-subtitle">
-          Monitor and interact with smart contracts
-        </p>
-      </div>
-      <div className="wallet-info">
-        <div className="wallet-address">
-          <span className="wallet-label">Connected Wallet:</span>
-          <span className="wallet-value">
-            {wallet?.address || "Not connected"}
-          </span>
+    <div className="page">
+      <header className="hero">
+        <div className="hero-copy">
+          <p className="eyebrow">Hyli Registry</p>
+          <h1>Zero-knowledge binaries, indexed and ready.</h1>
+          <p className="subtitle">
+            Browse contract ELFs, inspect metadata, and pull the exact program
+            you need. Public read access, fast cache, clean index.
+          </p>
+          <div className="hero-meta">
+            <span>Source: {baseUrl || "same origin"}</span>
+            <span>Last refresh: {formatDate(lastUpdated)}</span>
+          </div>
         </div>
-      </div>
-      <button className="blob-button" onClick={sendBlobTx} disabled={loading}>
-        {loading ? "SENDING..." : "SEND BLOB TX"}
-      </button>
-      {initialResult && <div className="result">{initialResult}</div>}
-      {confirmationResult && <div className="result">{confirmationResult}</div>}
-      <div className="contract-states">
-        <div className="contract-state">
-          <h2>Contract 1 State</h2>
-          {contract1State?.error ? (
-            <div className="error">{contract1State.error}</div>
-          ) : (
-            <pre>
-              {contract1State?.state
-                ? JSON.stringify(contract1State.state, null, 2)
-                : "Loading..."}
-            </pre>
-          )}
+        <div className="hero-panel">
+          <div className="stat-card">
+            <span className="stat-label">Contracts</span>
+            <strong>{stats.totalContracts}</strong>
+          </div>
+          <div className="stat-card">
+            <span className="stat-label">Binaries</span>
+            <strong>{stats.totalPrograms}</strong>
+          </div>
+          <div className="stat-card">
+            <span className="stat-label">Total size</span>
+            <strong>{formatBytes(stats.totalBytes)}</strong>
+          </div>
+          <div className="stat-card">
+            <span className="stat-label">Latest upload</span>
+            <strong>{formatDate(stats.latestUpload)}</strong>
+          </div>
         </div>
-      </div>
+      </header>
+
+      <section className="controls">
+        <div className="search">
+          <input
+            type="text"
+            placeholder="Filter by contract, program id, toolchain, zkvm"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
+        </div>
+        <button className="refresh" onClick={fetchRegistry}>
+          Refresh
+        </button>
+      </section>
+
+      {loading && (
+        <div className="status-panel">
+          <span className="status-dot" />
+          Loading registry data...
+        </div>
+      )}
+      {error && (
+        <div className="status-panel error">
+          <span className="status-dot" />
+          {error}
+        </div>
+      )}
+
+      <section className="registry-grid">
+        {filteredContracts.length === 0 && !loading ? (
+          <div className="status-panel">
+            <span className="status-dot" />
+            No contracts match this filter yet.
+          </div>
+        ) : (
+          filteredContracts.map(([contract, programs], index) => {
+            const orderedPrograms = [...programs].sort((a, b) =>
+              b.uploaded_at.localeCompare(a.uploaded_at),
+            );
+            return (
+              <article
+                className="contract-card"
+                key={contract}
+                style={{ "--delay": `${index * 70}ms` } as CSSProperties}
+              >
+                <header>
+                  <div>
+                    <h2>{contract}</h2>
+                    <p>{orderedPrograms.length} binaries</p>
+                  </div>
+                  <span className="contract-size">
+                    {formatBytes(
+                      orderedPrograms.reduce(
+                        (sum, program) => sum + program.size_bytes,
+                        0,
+                      ),
+                    )}
+                  </span>
+                </header>
+                <div className="program-list">
+                  {orderedPrograms.map((program) => (
+                    <div className="program-row" key={program.program_id}>
+                      <div className="program-meta">
+                        <div
+                          className="program-id"
+                          title={program.program_id}
+                        >
+                          {program.program_id}
+                        </div>
+                        <div className="program-details">
+                          <span>{formatBytes(program.size_bytes)}</span>
+                          <span>{formatDate(program.uploaded_at)}</span>
+                          <span>{program.metadata.zkvm}</span>
+                        </div>
+                      </div>
+                      <div className="program-actions">
+                        <span className="badge">
+                          {program.metadata.toolchain}
+                        </span>
+                        <span className="badge mono">
+                          {program.metadata.commit.slice(0, 8)}
+                        </span>
+                        <a
+                          className="download"
+                          href={buildUrl(
+                            `/api/elfs/${contract}/${program.program_id}`,
+                          )}
+                        >
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            );
+          })
+        )}
+      </section>
     </div>
-  );
-}
-
-function LandingPage() {
-  return (
-    <div className="wallet-page-wrapper">
-      <div className="landing-content-simple">
-        <h1 className="hero-title">
-          <span className="gradient-text">Hyli</span> App Scaffold
-        </h1>
-        <p className="hero-subtitle">
-          A starting point for your next blockchain application
-        </p>
-        <HyliWallet providers={["password", "google", "github"]} />
-      </div>
-      <div className="floating-shapes">
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-        <div className="shape shape-3"></div>
-      </div>
-    </div>
-  );
-}
-
-function AppContent() {
-  const { wallet } = useWallet();
-
-  if (!wallet) {
-    return <LandingPage />;
-  }
-
-  return <ScaffoldApp />;
-}
-
-function App() {
-  return (
-    <WalletProvider
-      config={{
-        nodeBaseUrl: import.meta.env.VITE_NODE_BASE_URL,
-        walletServerBaseUrl: import.meta.env.VITE_WALLET_SERVER_BASE_URL,
-        applicationWsUrl: import.meta.env.VITE_WALLET_WS_URL,
-      }}
-      sessionKeyConfig={{
-        duration: 24 * 60 * 60 * 1000, // Session key duration in ms (default: 72h)
-        whitelist: ["contract1"], // Required: contracts allowed for session key
-      }}
-    >
-      <AppContent />
-    </WalletProvider>
   );
 }
 

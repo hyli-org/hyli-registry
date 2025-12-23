@@ -446,7 +446,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-stream",
- "tower",
+ "tower 0.5.2",
  "tracing",
  "url",
  "wasmtimer",
@@ -641,7 +641,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.16",
  "tokio",
- "tower",
+ "tower 0.5.2",
  "tracing",
  "url",
  "wasmtimer",
@@ -657,7 +657,7 @@ dependencies = [
  "alloy-transport",
  "reqwest",
  "serde_json",
- "tower",
+ "tower 0.5.2",
  "tracing",
  "url",
 ]
@@ -1605,7 +1605,7 @@ dependencies = [
  "rustls-pki-types",
  "tokio",
  "tokio-rustls 0.26.2",
- "tower",
+ "tower 0.5.2",
  "tracing",
 ]
 
@@ -1719,11 +1719,38 @@ dependencies = [
 
 [[package]]
 name = "axum"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f"
+dependencies = [
+ "async-trait",
+ "axum-core 0.4.5",
+ "bytes",
+ "futures-util",
+ "http 1.3.1",
+ "http-body 1.0.1",
+ "http-body-util",
+ "itoa",
+ "matchit 0.7.3",
+ "memchr",
+ "mime",
+ "percent-encoding",
+ "pin-project-lite",
+ "rustversion",
+ "serde",
+ "sync_wrapper",
+ "tower 0.5.2",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
+name = "axum"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "021e862c184ae977658b36c4500f7feac3221ca5da43e3f25bd04ab6c79a29b5"
 dependencies = [
- "axum-core",
+ "axum-core 0.5.2",
  "base64 0.22.1",
  "bytes",
  "form_urlencoded",
@@ -1734,7 +1761,7 @@ dependencies = [
  "hyper 1.8.1",
  "hyper-util",
  "itoa",
- "matchit",
+ "matchit 0.8.4",
  "memchr",
  "mime",
  "multer",
@@ -1749,10 +1776,30 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-tungstenite 0.26.2",
- "tower",
+ "tower 0.5.2",
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "axum-core"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09f2bd6146b97ae3359fa0cc6d6b376d9539582c7b4220f041a33ec24c226199"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "futures-util",
+ "http 1.3.1",
+ "http-body 1.0.1",
+ "http-body-util",
+ "mime",
+ "pin-project-lite",
+ "rustversion",
+ "sync_wrapper",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]
@@ -2069,7 +2116,7 @@ dependencies = [
  "time",
  "tokio",
  "tokio-tungstenite 0.24.0",
- "tower",
+ "tower 0.5.2",
  "tracing",
  "url",
  "utoipa",
@@ -3713,7 +3760,7 @@ dependencies = [
 [[package]]
 name = "hyli-bonsai-runner"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "anyhow",
  "bincode",
@@ -3732,10 +3779,10 @@ dependencies = [
 [[package]]
 name = "hyli-client-sdk"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "anyhow",
- "axum",
+ "axum 0.8.4",
  "borsh",
  "hyli-bonsai-runner",
  "hyli-contract-sdk",
@@ -3753,7 +3800,7 @@ dependencies = [
 [[package]]
 name = "hyli-contract-sdk"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "borsh",
  "hyli-model",
@@ -3765,7 +3812,7 @@ dependencies = [
 [[package]]
 name = "hyli-crypto"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "anyhow",
  "blst",
@@ -3778,7 +3825,7 @@ dependencies = [
 [[package]]
 name = "hyli-model"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3801,12 +3848,12 @@ dependencies = [
 [[package]]
 name = "hyli-modules"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "anyhow",
  "anymap",
  "assertables",
- "axum",
+ "axum 0.8.4",
  "borsh",
  "config",
  "fjall",
@@ -3819,6 +3866,9 @@ dependencies = [
  "hyli-net",
  "indexmap 2.11.0",
  "opentelemetry",
+ "opentelemetry-http",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
  "paste",
  "prometheus",
  "quote",
@@ -3832,6 +3882,7 @@ dependencies = [
  "tokio-util",
  "tower-http",
  "tracing",
+ "tracing-opentelemetry",
  "tracing-subscriber 0.3.19",
  "utoipa",
  "utoipa-axum",
@@ -3841,10 +3892,10 @@ dependencies = [
 [[package]]
 name = "hyli-net"
 version = "0.14.0"
-source = "git+https://github.com/hyli-org/hyli.git?tag=v0.14.1#2eb0d16d61697c7c9d782a9b93ba6f667e7266c5"
+source = "git+https://github.com/hyli-org/hyli.git?branch=main#8cf80dd918886c18785f51668dee51eb5bb381c6"
 dependencies = [
  "anyhow",
- "axum",
+ "axum 0.8.4",
  "borsh",
  "bytes",
  "futures",
@@ -3862,6 +3913,18 @@ dependencies = [
  "tokio-util",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "hyli-registry-uploader"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "hex",
+ "reqwest",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -3943,6 +4006,19 @@ dependencies = [
  "tokio-rustls 0.26.2",
  "tower-service",
  "webpki-roots",
+]
+
+[[package]]
+name = "hyper-timeout"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b90d566bffbce6a75bd8b09a05aa8c2cb1fabb6cb348f8840c9e4c90a0d83b0"
+dependencies = [
+ "hyper 1.8.1",
+ "hyper-util",
+ "pin-project-lite",
+ "tokio",
+ "tower-service",
 ]
 
 [[package]]
@@ -4580,6 +4656,12 @@ dependencies = [
 
 [[package]]
 name = "matchit"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
+
+[[package]]
+name = "matchit"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
@@ -4734,6 +4816,16 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "nu-ansi-term"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
+dependencies = [
+ "overload",
+ "winapi",
 ]
 
 [[package]]
@@ -4932,6 +5024,72 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry-http"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8863faf2910030d139fb48715ad5ff2f35029fc5f244f6d5f689ddcf4d26253"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "http 1.3.1",
+ "opentelemetry",
+ "reqwest",
+ "tracing",
+]
+
+[[package]]
+name = "opentelemetry-otlp"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5bef114c6d41bea83d6dc60eb41720eedd0261a67af57b66dd2b84ac46c01d91"
+dependencies = [
+ "async-trait",
+ "futures-core",
+ "http 1.3.1",
+ "opentelemetry",
+ "opentelemetry-http",
+ "opentelemetry-proto",
+ "opentelemetry_sdk",
+ "prost",
+ "reqwest",
+ "thiserror 2.0.16",
+ "tokio",
+ "tonic",
+ "tracing",
+]
+
+[[package]]
+name = "opentelemetry-proto"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56f8870d3024727e99212eb3bb1762ec16e255e3e6f58eeb3dc8db1aa226746d"
+dependencies = [
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "prost",
+ "tonic",
+]
+
+[[package]]
+name = "opentelemetry_sdk"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84dfad6042089c7fc1f6118b7040dc2eb4ab520abbf410b79dc481032af39570"
+dependencies = [
+ "async-trait",
+ "futures-channel",
+ "futures-executor",
+ "futures-util",
+ "glob",
+ "opentelemetry",
+ "percent-encoding",
+ "rand 0.8.5",
+ "serde_json",
+ "thiserror 2.0.16",
+ "tracing",
+]
+
+[[package]]
 name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4942,6 +5100,12 @@ name = "outref"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
+
+[[package]]
+name = "overload"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "p256"
@@ -5689,7 +5853,7 @@ dependencies = [
  "tokio-native-tls",
  "tokio-rustls 0.26.2",
  "tokio-util",
- "tower",
+ "tower 0.5.2",
  "tower-http",
  "tower-service",
  "url",
@@ -6659,12 +6823,13 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum",
+ "axum 0.8.4",
  "bytes",
  "chrono",
  "clap",
  "config",
  "google-cloud-storage",
+ "hex",
  "hyli-client-sdk",
  "hyli-contract-sdk",
  "hyli-modules",
@@ -6672,12 +6837,11 @@ dependencies = [
  "prometheus",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "tower-http",
  "tracing",
- "utoipa",
- "utoipa-axum",
- "utoipa-swagger-ui",
+ "tracing-subscriber 0.3.19",
 ]
 
 [[package]]
@@ -7361,6 +7525,56 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
+name = "tonic"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "877c5b330756d856ffcc4553ab34a5684481ade925ecc54bcd1bf02b1d0d4d52"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "axum 0.7.9",
+ "base64 0.22.1",
+ "bytes",
+ "h2 0.4.12",
+ "http 1.3.1",
+ "http-body 1.0.1",
+ "http-body-util",
+ "hyper 1.8.1",
+ "hyper-timeout",
+ "hyper-util",
+ "percent-encoding",
+ "pin-project",
+ "prost",
+ "socket2 0.5.10",
+ "tokio",
+ "tokio-stream",
+ "tower 0.4.13",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
+name = "tower"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8fa9be0de6cf49e536ce1851f987bd21a43b771b09473c3549a6c853db37c1c"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "indexmap 1.9.3",
+ "pin-project",
+ "pin-project-lite",
+ "rand 0.8.5",
+ "slab",
+ "tokio",
+ "tokio-util",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
 name = "tower"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7394,7 +7608,7 @@ dependencies = [
  "pin-project-lite",
  "tokio",
  "tokio-util",
- "tower",
+ "tower 0.5.2",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -7446,6 +7660,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-log"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
+dependencies = [
+ "log",
+ "once_cell",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-opentelemetry"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "721f2d2569dce9f3dfbbddee5906941e953bfcdf736a62da3377f5751650cc36"
+dependencies = [
+ "js-sys",
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "smallvec",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
+ "tracing-subscriber 0.3.19",
+ "web-time",
+]
+
+[[package]]
 name = "tracing-serde"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7471,14 +7714,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8189decb5ac0fa7bc8b96b7cb9b2701d60d48805aca84a238004d665fcc4008"
 dependencies = [
  "matchers",
+ "nu-ansi-term",
  "once_cell",
  "regex",
  "serde",
  "serde_json",
  "sharded-slab",
+ "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
+ "tracing-log",
  "tracing-serde",
 ]
 
@@ -7632,7 +7878,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c25bae5bccc842449ec0c5ddc5cbb6a3a1eaeac4503895dc105a1138f8234a0"
 dependencies = [
- "axum",
+ "axum 0.8.4",
  "paste",
  "tower-layer",
  "tower-service",
@@ -7656,7 +7902,7 @@ version = "9.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d047458f1b5b65237c2f6dc6db136945667f40a7668627b3490b9513a3d43a55"
 dependencies = [
- "axum",
+ "axum 0.8.4",
  "base64 0.22.1",
  "mime_guess",
  "regex",
@@ -7665,15 +7911,8 @@ dependencies = [
  "serde_json",
  "url",
  "utoipa",
- "utoipa-swagger-ui-vendored",
  "zip",
 ]
-
-[[package]]
-name = "utoipa-swagger-ui-vendored"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2eebbbfe4093922c2b6734d7c679ebfebd704a0d7e56dfcb0d05818ce28977d"
 
 [[package]]
 name = "uuid"

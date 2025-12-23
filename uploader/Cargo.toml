@@ -1,0 +1,16 @@
+[package]
+name = "hyli-registry-uploader"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "hyli_registry_uploader"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+hex = { workspace = true }
+reqwest = { workspace = true, features = ["json", "multipart"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

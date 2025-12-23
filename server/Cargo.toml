@@ -20,13 +20,20 @@ chrono = { version = "0.4.40", default-features = false, features = [
   "clock",
   "serde",
 ] }
+hex = { workspace = true }
+sha2 = { workspace = true }
 google-cloud-storage = "0.24.0"
 
 tracing = { workspace = true }
 clap = { workspace = true }
-utoipa-axum = { workspace = true }
-utoipa = { workspace = true }
-utoipa-swagger-ui = { workspace = true, features = ["vendored"] }
 
 prometheus = { workspace = true }
 opentelemetry = { workspace = true }
+
+tracing-subscriber = { version = "0.3.19" }
+
+[package.metadata.cargo-machete]
+ignored = ["opentelemetry"]
+
+[features]
+instrumentation = ["hyli-modules/instrumentation"]

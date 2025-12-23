@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["server"]
+members = ["server", "uploader"]
 
 [workspace.dependencies]
-sdk = { git = "https://github.com/hyli-org/hyli.git", package = "hyli-contract-sdk", tag = "v0.14.1" }
-client-sdk = { git = "https://github.com/hyli-org/hyli.git", default-features = false, package = "hyli-client-sdk", tag = "v0.14.1" }
-hyli-modules = { git = "https://github.com/hyli-org/hyli.git", package = "hyli-modules", tag = "v0.14.1" }
+sdk = { git = "https://github.com/hyli-org/hyli.git", package = "hyli-contract-sdk", branch = "main" }
+client-sdk = { git = "https://github.com/hyli-org/hyli.git", default-features = false, package = "hyli-client-sdk", branch = "main" }
+hyli-modules = { git = "https://github.com/hyli-org/hyli.git", package = "hyli-modules", branch = "main" }
 
 anyhow = "1.0.96"
 axum = "0.8.3"
@@ -28,7 +28,6 @@ thiserror = "2.0"
 tokio = "1.44.2"
 tower-http = "0.6.2"
 tracing = "0.1.41"
-tracing-subscriber = "0.3.18"
 utoipa = "5.3.1"
 utoipa-axum = "0.2.0"
 utoipa-swagger-ui = { version = "9.0.2", features = ["vendored"] }

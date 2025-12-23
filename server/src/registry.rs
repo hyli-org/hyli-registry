@@ -11,6 +11,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::Instant;
 use tracing::info;
+use sha2::{Digest, Sha256};
 
 const INDEX_FILE_NAME: &str = "index.json";
 
@@ -342,11 +343,19 @@ impl RegistryMetrics {
 }
 
 fn binary_object_path(contract: &str, program_id: &str) -> String {
-    format!("{}/{}.elf", contract, program_id)
+    let digest = program_id_digest(program_id);
+    format!("{}/{}.elf", contract, digest)
 }
 
 fn metadata_object_path(contract: &str, program_id: &str) -> String {
-    format!("{}/{}.json", contract, program_id)
+    let digest = program_id_digest(program_id);
+    format!("{}/{}.json", contract, digest)
+}
+
+fn program_id_digest(program_id: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(program_id.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 async fn create_storage_backend(config: &Conf) -> Result<Arc<dyn StorageBackend>> {
