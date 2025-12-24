@@ -26,5 +26,5 @@ jobs:
           cache-on-failure: true
 
       - name: Run cargo test
-        run: cargo test --features nobuild
+        run: cargo test
 

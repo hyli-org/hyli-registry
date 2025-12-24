@@ -31,4 +31,4 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        run: cargo clippy --all-targets --features nobuild -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
