@@ -1,53 +1,35 @@
-# Hyli App Scaffold
+# Hyli ZKVM Registry
 
-This repository provides a scaffold to build applications on the Hyli network using Risc0 contracts.
+A lightweight registry for ZKVM binaries (ELFs). Applications upload their built contract binaries and later download them by `contract` + `program_id` at runtime. The registry supports both local filesystem and Google Cloud Storage backends, keeps a single JSON index at the root, and exposes a simple HTTP API plus a small web UI.
 
-For step-by-step instructions, [follow our quickstart](https://docs.hyli.org/quickstart/run.md).
+## What this provides
 
-## Architecture
+- **Upload API** (authenticated) for ELFs + metadata.
+- **Public read APIs** to list contracts/programs and download ELFs.
+- **Delete APIs** (admin key) to remove a program or an entire contract.
+- **Storage backends**: local data dir or GCS bucket/prefix.
+- **Index file** stored at the storage root; rebuilt if missing.
+- **Caching**: in-memory LRU for index and recent binaries to reduce GCS calls.
+- **Prometheus metrics** exposed by the existing `/v1/metrics` stack.
+- **Uploader CLI/Lib** for sending binaries from CI or tooling.
 
-The application follows a client-server model:
+## Repository layout
 
-- The frontend sends operation requests to the server.
-- The server handles transaction creation, proving, and submission.
-- All interactions are executed through the Hyli network.
+- `server/` – HTTP API + storage backends
+- `front/` – registry UI
+- `hyli-registry-uploader/` – CLI + lib to upload binaries
 
-Currently, only Risc0 contracts are supported.
+## Quick start
 
-## Getting Started
-
-### Pre-requisites
-
-- Install [Hylix](https://github.com/hyli-org/hyli/blob/main/crates/hylix/README.md) (Binary: `hy`)
-- Clone this repository
-- [Install RISC-Zero](https://dev.risczero.com/api/zkvm/install)
-- [Install Docker](https://docs.docker.com/compose/install/)
-
-### 1. Start the Hyli devnet
-
-You can run the docker node and the wallet using
+### 1) Run the server
 
 ```bash
-hy devnet start --bake
-```
-
-This will launch a development-mode node and the wallet server and ui.
-
-### 2. Start the server
-
-From the root of this repository:
-
-```bash
-# Export devnet env vars first, so that server can connect to your local devnet
-source <(hy devnet env)>
 cargo run -p server
 ```
 
-This starts the backend service, which handles contract interactions and proofs.
+By default, it uses local storage under `data/` and a development API key.
 
-### 3. Start the frontend
-
-To navigate to the frontend directory and start the development server:
+### 2) Run the UI
 
 ```bash
 cd front
@@ -55,50 +37,112 @@ bun install
 bun run dev
 ```
 
-This runs the web interface for interacting with the Hyli network.
+## Configuration
 
-## Development
+All config values can be set via TOML or `HYLI__...` env vars.
 
-### Building Contracts
+Key settings:
 
-Contract ELF files are rebuilt automatically when changes are made.
-
-For reproducible builds using Docker:
-
-```bash
-cargo build -p contracts --features build --features all
-```
-
-This ensures builds are consistent across environments.
-
-If you want to build in non-reproducible mode (to test contract compilation):
-```bash
-cargo build -p contracts --features build --features all --features nonreproducible
-```
-
-For more details, refer to the [Hyli documentation](https://docs.hyli.org).
-
-## Registry API
-
-Upload requires an API key and uses multipart form data:
-
-- `POST /api/elfs/:contract` (headers: `x-api-key`)
-  - fields: `program_id`, `metadata` (JSON: `{ "toolchain": "...", "commit": "...", "zkvm": "..." }`), `file`
-- `GET /api/elfs` (list all contracts + programs)
-- `GET /api/elfs/:contract` (list programs for a contract)
-- `GET /api/elfs/:contract/:program_id` (download the ELF)
-
-The registry stores an `index.json` at the storage root plus per-program metadata sidecars
-(`:contract/:program_id.json`) to allow rebuilding the index if needed.
-
-## Registry Configuration
-
-Configuration keys (TOML or `HYLI__...` env vars):
-
-- `api_key`: required for uploads.
-- `storage_backend`: `"local"` (default) or `"gcs"`.
+- `api_key`: required for upload endpoints.
+- `admin_key`: required for delete endpoints.
+- `storage_backend`: `"local"` or `"gcs"`.
 - `gcs_bucket`: required when using GCS.
-- `gcs_prefix`: optional namespace prefix inside the bucket.
+- `gcs_prefix`: optional prefix inside the bucket.
+- `data_directory`: base directory (default `data`).
 - `local_storage_directory`: optional override for local storage path.
-- `data_directory`: base data directory (default `"data"`).
-- `rest_server_max_body_size`: set to `0` for unlimited upload size.
+- `rest_server_max_body_size`: set `0` for unlimited upload size.
+
+Example env:
+
+```bash
+export HYLI_API_KEY="dev-api"
+export HYLI_ADMIN_KEY="dev-admin"
+export HYLI_STORAGE_BACKEND="local"
+```
+
+## API
+
+### Upload (authenticated)
+
+`POST /api/elfs/:contract`
+
+Headers:
+- `x-api-key`: upload API key
+
+Form fields (multipart):
+- `program_id`: string (no validation)
+- `metadata`: JSON string
+  - `toolchain`
+  - `commit`
+  - `zkvm`
+- `file`: ELF binary
+
+Behavior:
+- Overwrites if `(contract, program_id)` already exists.
+- `program_id` is hashed for storage file names (prevents long filename issues).
+- Contract name must be lowercase with no slashes.
+
+### Read (public)
+
+- `GET /api/elfs` – list all contracts + programs
+- `GET /api/elfs/:contract` – list programs for a contract
+- `GET /api/elfs/:contract/:program_id` – download ELF
+
+### Delete (admin key)
+
+Headers:
+- `x-api-key`: admin key
+
+- `DELETE /api/elfs/:contract/:program_id` – delete one program
+- `DELETE /api/elfs/:contract` – delete whole contract
+
+## Storage model
+
+- Objects are stored under `:contract/` folder.
+- Each program stores:
+  - ELF binary: `:contract/:hash.elf`
+  - Metadata: `:contract/:hash.json`
+- Root `index.json` maps contracts to program entries.
+- Index is rebuilt by scanning metadata if `index.json` is missing.
+
+## Caching
+
+- Index cache: keeps latest in memory.
+- Binary cache: keeps the 2 latest binaries per contract in memory.
+
+## Uploader CLI / Lib
+
+The uploader can be used as a binary or imported as a library in other crates.
+
+Library entrypoints:
+
+- `upload(UploadRequest)` – send a binary to the registry
+- `program_id_hex_from_file(path)` – read bytes and hex-encode (SP1-style)
+- `program_id_from_file(path)` – read raw program id from file
+
+CLI subcommands:
+
+- `sp1` – takes an ELF + vk file, hex-encodes program_id from vk
+- `risc0` – takes an ELF + explicit program_id
+
+## UI
+
+The frontend provides:
+
+- Contract list + program listing
+- Simple stats
+- Download links
+- Admin login (secret only) + delete actions
+
+Admin key is stored in localStorage as `hyli_registry_admin_key`.
+
+## Metrics
+
+Prometheus metrics are served by the existing `/v1/metrics` endpoint. No extra setup is required; exporters are configured in the stack.
+
+## Development notes
+
+- No file size limits, no content-type restrictions.
+- Timestamps are server-generated.
+- `program_id` is stored in the index but not used as a filename.
+
