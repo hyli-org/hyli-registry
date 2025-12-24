@@ -1,11 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-mod local;
 mod gcs;
+mod local;
 
-pub use local::LocalStorageBackend;
 pub use gcs::GcsStorageBackend;
+pub use local::LocalStorageBackend;
 
 #[async_trait]
 pub trait StorageBackend: Send + Sync {

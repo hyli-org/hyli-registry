@@ -22,14 +22,14 @@ pub struct UploadResponse {
 }
 
 pub fn program_id_hex_from_file(path: &Path) -> Result<String> {
-    let bytes =
-        fs::read(path).with_context(|| format!("Failed to read program id file {}", path.display()))?;
+    let bytes = fs::read(path)
+        .with_context(|| format!("Failed to read program id file {}", path.display()))?;
     Ok(hex::encode(bytes))
 }
 
 pub fn program_id_from_file(path: &Path) -> Result<String> {
-    let raw =
-        fs::read(path).with_context(|| format!("Failed to read program id file {}", path.display()))?;
+    let raw = fs::read(path)
+        .with_context(|| format!("Failed to read program id file {}", path.display()))?;
     let text = String::from_utf8(raw).context("Program id file is not valid UTF-8")?;
     Ok(text.trim().to_string())
 }
