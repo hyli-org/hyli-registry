@@ -572,15 +572,21 @@ mod tests {
             &["op"],
         )
         .unwrap();
-        let cache_hits =
-            IntCounter::new("hyli_registry_cache_hits_total_test", "Registry cache hits.")
-                .unwrap();
-        let cache_misses =
-            IntCounter::new("hyli_registry_cache_misses_total_test", "Registry cache misses.")
-                .unwrap();
-        let index_rebuilds =
-            IntCounter::new("hyli_registry_index_rebuilds_total_test", "Index rebuild count.")
-                .unwrap();
+        let cache_hits = IntCounter::new(
+            "hyli_registry_cache_hits_total_test",
+            "Registry cache hits.",
+        )
+        .unwrap();
+        let cache_misses = IntCounter::new(
+            "hyli_registry_cache_misses_total_test",
+            "Registry cache misses.",
+        )
+        .unwrap();
+        let index_rebuilds = IntCounter::new(
+            "hyli_registry_index_rebuilds_total_test",
+            "Index rebuild count.",
+        )
+        .unwrap();
         let storage_latency = HistogramVec::new(
             prometheus::HistogramOpts::new(
                 "hyli_registry_storage_latency_seconds_test",
