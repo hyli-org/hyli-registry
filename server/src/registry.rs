@@ -545,3 +545,317 @@ async fn load_or_rebuild_index(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::LocalStorageBackend;
+    use bytes::Bytes;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+    use tokio::sync::RwLock;
+
+    fn test_metrics() -> RegistryMetrics {
+        let requests = IntCounterVec::new(
+            Opts::new(
+                "hyli_registry_requests_total_test",
+                "Total registry requests by operation.",
+            ),
+            &["op"],
+        )
+        .unwrap();
+        let bytes = IntCounterVec::new(
+            Opts::new(
+                "hyli_registry_bytes_total_test",
+                "Total bytes transferred by operation.",
+            ),
+            &["op"],
+        )
+        .unwrap();
+        let cache_hits =
+            IntCounter::new("hyli_registry_cache_hits_total_test", "Registry cache hits.")
+                .unwrap();
+        let cache_misses =
+            IntCounter::new("hyli_registry_cache_misses_total_test", "Registry cache misses.")
+                .unwrap();
+        let index_rebuilds =
+            IntCounter::new("hyli_registry_index_rebuilds_total_test", "Index rebuild count.")
+                .unwrap();
+        let storage_latency = HistogramVec::new(
+            prometheus::HistogramOpts::new(
+                "hyli_registry_storage_latency_seconds_test",
+                "Latency of storage operations.",
+            ),
+            &["op", "backend"],
+        )
+        .unwrap();
+
+        RegistryMetrics {
+            requests,
+            bytes,
+            cache_hits,
+            cache_misses,
+            index_rebuilds,
+            storage_latency,
+        }
+    }
+
+    async fn make_service() -> (RegistryService, TempDir) {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let storage = Arc::new(LocalStorageBackend::new(temp_dir.path().to_path_buf()));
+        let metrics = test_metrics();
+        let index = load_or_rebuild_index(storage.as_ref(), &metrics)
+            .await
+            .expect("load index");
+        let service = RegistryService {
+            storage,
+            index: Arc::new(RwLock::new(index)),
+            cache: Arc::new(RwLock::new(BinaryCache::default())),
+            metrics,
+        };
+        (service, temp_dir)
+    }
+
+    fn sample_metadata(toolchain: &str) -> ProgramMetadata {
+        ProgramMetadata {
+            toolchain: toolchain.to_string(),
+            commit: "abc123".to_string(),
+            zkvm: "sp1".to_string(),
+        }
+    }
+
+    #[tokio::test]
+    async fn program_id_hash_paths_are_stable() {
+        let digest = program_id_digest("hello");
+        assert_eq!(
+            digest,
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+        );
+        let object_path = binary_object_path("contract", "hello");
+        let metadata_path = metadata_object_path("contract", "hello");
+        assert_eq!(
+            object_path,
+            "contract/2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824.elf"
+        );
+        assert_eq!(
+            metadata_path,
+            "contract/2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824.json"
+        );
+    }
+
+    #[tokio::test]
+    async fn upload_overwrite_updates_index_and_storage() {
+        let (service, _temp_dir) = make_service().await;
+        let contract = "orders";
+        let program_id = "program-a";
+
+        service
+            .upload(
+                contract,
+                program_id,
+                sample_metadata("toolchain-v1"),
+                Bytes::from_static(b"first"),
+            )
+            .await
+            .expect("upload v1");
+
+        service
+            .upload(
+                contract,
+                program_id,
+                sample_metadata("toolchain-v2"),
+                Bytes::from_static(b"second"),
+            )
+            .await
+            .expect("upload v2");
+
+        let index = service.index.read().await;
+        let entry = index
+            .contracts
+            .get(contract)
+            .and_then(|contract_entry| contract_entry.programs.get(program_id))
+            .expect("entry present");
+        assert_eq!(entry.metadata.toolchain, "toolchain-v2");
+        assert_eq!(entry.size_bytes, 6);
+
+        let stored = service
+            .storage
+            .read_object(&entry.object_path)
+            .await
+            .expect("read object");
+        assert_eq!(stored.as_deref(), Some(b"second".as_slice()));
+
+        let metadata_bytes = service
+            .storage
+            .read_object(&entry.metadata_path)
+            .await
+            .expect("read metadata")
+            .expect("metadata exists");
+        let stored_entry: ProgramEntry =
+            serde_json::from_slice(&metadata_bytes).expect("parse metadata");
+        assert_eq!(stored_entry.metadata.toolchain, "toolchain-v2");
+        assert_eq!(stored_entry.size_bytes, 6);
+    }
+
+    #[tokio::test]
+    async fn delete_program_removes_objects_and_updates_index() {
+        let (service, _temp_dir) = make_service().await;
+        let contract = "orders";
+
+        service
+            .upload(
+                contract,
+                "program-a",
+                sample_metadata("toolchain-a"),
+                Bytes::from_static(b"alpha"),
+            )
+            .await
+            .expect("upload a");
+        service
+            .upload(
+                contract,
+                "program-b",
+                sample_metadata("toolchain-b"),
+                Bytes::from_static(b"beta"),
+            )
+            .await
+            .expect("upload b");
+
+        let deleted = service
+            .delete_program(contract, "program-a")
+            .await
+            .expect("delete program");
+        assert!(deleted);
+
+        let index = service.index.read().await;
+        let contract_entry = index.contracts.get(contract).expect("contract exists");
+        assert_eq!(contract_entry.programs.len(), 1);
+        assert!(contract_entry.programs.contains_key("program-b"));
+
+        let removed_entry = contract_entry.programs.get("program-a");
+        assert!(removed_entry.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_program_removes_storage_objects() {
+        let (service, _temp_dir) = make_service().await;
+        let contract = "orders";
+        let program_id = "program-a";
+
+        let entry = service
+            .upload(
+                contract,
+                program_id,
+                sample_metadata("toolchain-a"),
+                Bytes::from_static(b"alpha"),
+            )
+            .await
+            .expect("upload");
+
+        service
+            .delete_program(contract, program_id)
+            .await
+            .expect("delete");
+
+        let object = service
+            .storage
+            .read_object(&entry.object_path)
+            .await
+            .expect("read object");
+        assert!(object.is_none());
+        let metadata = service
+            .storage
+            .read_object(&entry.metadata_path)
+            .await
+            .expect("read metadata");
+        assert!(metadata.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_contract_removes_all_programs() {
+        let (service, _temp_dir) = make_service().await;
+        let contract = "orders";
+
+        let entry_a = service
+            .upload(
+                contract,
+                "program-a",
+                sample_metadata("toolchain-a"),
+                Bytes::from_static(b"alpha"),
+            )
+            .await
+            .expect("upload a");
+        let entry_b = service
+            .upload(
+                contract,
+                "program-b",
+                sample_metadata("toolchain-b"),
+                Bytes::from_static(b"beta"),
+            )
+            .await
+            .expect("upload b");
+
+        let deleted = service
+            .delete_contract(contract)
+            .await
+            .expect("delete contract");
+        assert!(deleted);
+
+        let index = service.index.read().await;
+        assert!(index.contracts.is_empty());
+
+        let object_a = service
+            .storage
+            .read_object(&entry_a.object_path)
+            .await
+            .expect("read object a");
+        assert!(object_a.is_none());
+        let object_b = service
+            .storage
+            .read_object(&entry_b.object_path)
+            .await
+            .expect("read object b");
+        assert!(object_b.is_none());
+    }
+
+    #[tokio::test]
+    async fn rebuild_index_from_metadata() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let storage = Arc::new(LocalStorageBackend::new(temp_dir.path().to_path_buf()));
+        let contract = "orders";
+        let program_id = "program-a";
+        let entry = ProgramEntry {
+            program_id: program_id.to_string(),
+            contract: contract.to_string(),
+            object_path: binary_object_path(contract, program_id),
+            metadata_path: metadata_object_path(contract, program_id),
+            size_bytes: 42,
+            uploaded_at: "2024-01-01T00:00:00Z".to_string(),
+            metadata: sample_metadata("toolchain-a"),
+        };
+        let metadata_bytes = serde_json::to_vec(&entry).expect("serialize metadata");
+        storage
+            .write_object(&entry.metadata_path, &metadata_bytes)
+            .await
+            .expect("write metadata");
+
+        let metrics = test_metrics();
+        let index = load_or_rebuild_index(storage.as_ref(), &metrics)
+            .await
+            .expect("rebuild index");
+        let contract_entry = index.contracts.get(contract).expect("contract exists");
+        let stored = contract_entry
+            .programs
+            .get(program_id)
+            .expect("program exists");
+        assert_eq!(stored.size_bytes, 42);
+
+        let index_bytes = storage
+            .read_object(INDEX_FILE_NAME)
+            .await
+            .expect("read index")
+            .expect("index exists");
+        let disk_index: IndexFile = serde_json::from_slice(&index_bytes).expect("parse index");
+        assert!(disk_index.contracts.contains_key(contract));
+    }
+}
