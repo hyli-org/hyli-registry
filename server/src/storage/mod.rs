@@ -13,4 +13,5 @@ pub trait StorageBackend: Send + Sync {
     async fn read_object(&self, path: &str) -> Result<Option<Vec<u8>>>;
     async fn write_object(&self, path: &str, data: &[u8]) -> Result<()>;
     async fn list_objects(&self, prefix: Option<&str>) -> Result<Vec<String>>;
+    async fn delete_object(&self, path: &str) -> Result<()>;
 }

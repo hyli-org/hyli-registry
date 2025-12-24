@@ -1,12 +1,15 @@
 use super::StorageBackend;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use axum::http;
 use google_cloud_storage::client::{Client, ClientConfig};
+use google_cloud_storage::http::objects::delete::DeleteObjectRequest;
 use google_cloud_storage::http::objects::download::Range;
 use google_cloud_storage::http::objects::get::GetObjectRequest;
 use google_cloud_storage::http::objects::list::ListObjectsRequest;
 use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
 use google_cloud_storage::http::Error as GcsError;
+use tracing::info;
 
 pub struct GcsStorageBackend {
     client: Client,
@@ -27,7 +30,9 @@ impl GcsStorageBackend {
 
     fn object_path(&self, object: &str) -> String {
         match &self.prefix {
-            Some(prefix) if !prefix.is_empty() => format!("{}/{}", prefix.trim_end_matches('/'), object),
+            Some(prefix) if !prefix.is_empty() => {
+                format!("{}/{}", prefix.trim_end_matches('/'), object)
+            }
             _ => object.to_string(),
         }
     }
@@ -45,6 +50,7 @@ impl GcsStorageBackend {
 
     fn is_not_found(err: &GcsError) -> bool {
         matches!(err, GcsError::Response(response) if response.code == 404)
+            || matches!(err, GcsError::HttpClient(http_err) if http_err.status() == Some(http::status::StatusCode::NOT_FOUND))
     }
 }
 
@@ -56,12 +62,17 @@ impl StorageBackend for GcsStorageBackend {
 
     async fn read_object(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let object = self.object_path(path);
+        info!("Reading object from GCS at path: {}", object);
         let request = GetObjectRequest {
             bucket: self.bucket.clone(),
             object,
             ..Default::default()
         };
-        match self.client.download_object(&request, &Range::default()).await {
+        match self
+            .client
+            .download_object(&request, &Range::default())
+            .await
+        {
             Ok(bytes) => Ok(Some(bytes)),
             Err(err) if Self::is_not_found(&err) => Ok(None),
             Err(err) => Err(err).context("reading gcs object"),
@@ -70,6 +81,7 @@ impl StorageBackend for GcsStorageBackend {
 
     async fn write_object(&self, path: &str, data: &[u8]) -> Result<()> {
         let object = self.object_path(path);
+        info!("Writing object to GCS at path: {}", object);
         let upload_type = UploadType::Simple(Media::new(object.clone()));
         let request = UploadObjectRequest {
             bucket: self.bucket.clone(),
@@ -84,6 +96,7 @@ impl StorageBackend for GcsStorageBackend {
     }
 
     async fn list_objects(&self, prefix: Option<&str>) -> Result<Vec<String>> {
+        info!("Listing objects in GCS with prefix: {:?}", prefix);
         let list_prefix = match (self.prefix.as_deref(), prefix) {
             (Some(base), Some(extra)) if !base.is_empty() && !extra.is_empty() => {
                 Some(format!("{}/{}", base.trim_end_matches('/'), extra))
@@ -116,5 +129,20 @@ impl StorageBackend for GcsStorageBackend {
             }
         }
         Ok(objects)
+    }
+
+    async fn delete_object(&self, path: &str) -> Result<()> {
+        let object = self.object_path(path);
+        info!("Deleting object from GCS at path: {}", object);
+        let request = DeleteObjectRequest {
+            bucket: self.bucket.clone(),
+            object,
+            ..Default::default()
+        };
+        match self.client.delete_object(&request).await {
+            Ok(()) => Ok(()),
+            Err(err) if Self::is_not_found(&err) => Ok(()),
+            Err(err) => Err(err).context("deleting gcs object"),
+        }
     }
 }

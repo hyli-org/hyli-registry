@@ -11,6 +11,8 @@ pub struct Conf {
     pub data_directory: PathBuf,
     /// API key used to authenticate uploads.
     pub api_key: String,
+    /// API key used to authenticate admin actions (deletes).
+    pub admin_key: String,
     /// Storage backend ("local" or "gcs").
     pub storage_backend: String,
     /// GCS bucket name when storage_backend = "gcs".

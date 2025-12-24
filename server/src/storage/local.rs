@@ -88,4 +88,13 @@ impl StorageBackend for LocalStorageBackend {
         }
         Ok(objects)
     }
+
+    async fn delete_object(&self, path: &str) -> Result<()> {
+        let path = self.resolve_path(path);
+        match fs::remove_file(path).await {
+            Ok(_) => Ok(()),
+            Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(err).context("deleting local object"),
+        }
+    }
 }

@@ -56,12 +56,24 @@ const formatDate = (value: string | null) => {
   }).format(date);
 };
 
+const ADMIN_KEY_STORAGE = "hyli_registry_admin_key";
+
+const loadAdminKey = () => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return window.localStorage.getItem(ADMIN_KEY_STORAGE) || "";
+};
+
 function App() {
   const [registry, setRegistry] = useState<RegistryIndex>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [adminKey, setAdminKey] = useState(loadAdminKey);
+  const [adminDraft, setAdminDraft] = useState(adminKey);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const fetchRegistry = async () => {
     setLoading(true);
@@ -87,6 +99,17 @@ function App() {
     const interval = setInterval(fetchRegistry, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (adminKey.trim()) {
+      window.localStorage.setItem(ADMIN_KEY_STORAGE, adminKey.trim());
+    } else {
+      window.localStorage.removeItem(ADMIN_KEY_STORAGE);
+    }
+  }, [adminKey]);
 
   const stats = useMemo(() => {
     const entries = Object.entries(registry);
@@ -130,6 +153,83 @@ function App() {
       })
       .sort(([a], [b]) => a.localeCompare(b));
   }, [registry, filter]);
+
+  const isAdmin = adminKey.trim().length > 0;
+
+  const saveAdminKey = () => {
+    setAdminKey(adminDraft.trim());
+  };
+
+  const clearAdminKey = () => {
+    setAdminDraft("");
+    setAdminKey("");
+  };
+
+  const deleteProgram = async (contract: string, programId: string) => {
+    if (!adminKey.trim()) {
+      return;
+    }
+    const confirmed = window.confirm(
+      `Delete program ${programId} from ${contract}?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+    const key = `${contract}:${programId}`;
+    setDeleteTarget(key);
+    setError(null);
+    try {
+      const response = await fetch(
+        buildUrl(`/api/elfs/${contract}/${programId}`),
+        {
+          method: "DELETE",
+          headers: {
+            "x-api-key": adminKey,
+          },
+        },
+      );
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+      await fetchRegistry();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const deleteContract = async (contract: string) => {
+    if (!adminKey.trim()) {
+      return;
+    }
+    const confirmed = window.confirm(
+      `Delete contract ${contract} and all binaries?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+    setDeleteTarget(contract);
+    setError(null);
+    try {
+      const response = await fetch(buildUrl(`/api/elfs/${contract}`), {
+        method: "DELETE",
+        headers: {
+          "x-api-key": adminKey,
+        },
+      });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+      await fetchRegistry();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
 
   return (
     <div className="page">
@@ -175,9 +275,27 @@ function App() {
             onChange={(event) => setFilter(event.target.value)}
           />
         </div>
-        <button className="refresh" onClick={fetchRegistry}>
-          Refresh
-        </button>
+        <div className="controls-actions">
+          <div className="admin-login">
+            <input
+              type="password"
+              placeholder="Admin key"
+              value={adminDraft}
+              onChange={(event) => setAdminDraft(event.target.value)}
+            />
+            <button className="ghost" onClick={saveAdminKey}>
+              {isAdmin ? "Update" : "Set"}
+            </button>
+            {isAdmin && (
+              <button className="ghost" onClick={clearAdminKey}>
+                Clear
+              </button>
+            )}
+          </div>
+          <button className="refresh" onClick={fetchRegistry}>
+            Refresh
+          </button>
+        </div>
       </section>
 
       {loading && (
@@ -215,23 +333,31 @@ function App() {
                     <h2>{contract}</h2>
                     <p>{orderedPrograms.length} binaries</p>
                   </div>
-                  <span className="contract-size">
-                    {formatBytes(
-                      orderedPrograms.reduce(
-                        (sum, program) => sum + program.size_bytes,
-                        0,
-                      ),
+                  <div className="contract-actions">
+                    <span className="contract-size">
+                      {formatBytes(
+                        orderedPrograms.reduce(
+                          (sum, program) => sum + program.size_bytes,
+                          0,
+                        ),
+                      )}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        className="danger"
+                        onClick={() => deleteContract(contract)}
+                        disabled={deleteTarget === contract}
+                      >
+                        Delete contract
+                      </button>
                     )}
-                  </span>
+                  </div>
                 </header>
                 <div className="program-list">
                   {orderedPrograms.map((program) => (
                     <div className="program-row" key={program.program_id}>
                       <div className="program-meta">
-                        <div
-                          className="program-id"
-                          title={program.program_id}
-                        >
+                        <div className="program-id" title={program.program_id}>
                           {program.program_id}
                         </div>
                         <div className="program-details">
@@ -245,7 +371,7 @@ function App() {
                           {program.metadata.toolchain}
                         </span>
                         <span className="badge mono">
-                          {program.metadata.commit.slice(0, 8)}
+                          commit: {program.metadata.commit.slice(0, 8)}
                         </span>
                         <a
                           className="download"
@@ -255,6 +381,20 @@ function App() {
                         >
                           Download
                         </a>
+                        {isAdmin && (
+                          <button
+                            className="danger"
+                            onClick={() =>
+                              deleteProgram(contract, program.program_id)
+                            }
+                            disabled={
+                              deleteTarget ===
+                              `${contract}:${program.program_id}`
+                            }
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

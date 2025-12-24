@@ -56,6 +56,9 @@ async fn main() -> Result<()> {
     if config.api_key.trim().is_empty() {
         anyhow::bail!("api_key must be set to enable authenticated uploads");
     }
+    if config.admin_key.trim().is_empty() {
+        anyhow::bail!("admin_key must be set to enable admin deletes");
+    }
     if config.rest_server_max_body_size == 0 {
         config.rest_server_max_body_size = usize::MAX;
     }

@@ -5,13 +5,13 @@ use bytes::Bytes;
 use chrono::Utc;
 use prometheus::{HistogramVec, IntCounter, IntCounterVec, Opts};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::Instant;
 use tracing::info;
-use sha2::{Digest, Sha256};
 
 const INDEX_FILE_NAME: &str = "index.json";
 
@@ -248,6 +248,102 @@ impl RegistryService {
 
         Ok(Some(bytes))
     }
+
+    pub async fn delete_program(&self, contract: &str, program_id: &str) -> Result<bool> {
+        let entry = {
+            let index = self.index.read().await;
+            index
+                .contracts
+                .get(contract)
+                .and_then(|contract_entry| contract_entry.programs.get(program_id))
+                .cloned()
+        };
+        let Some(entry) = entry else {
+            return Ok(false);
+        };
+
+        self.storage
+            .delete_object(&entry.object_path)
+            .await
+            .context("deleting elf")?;
+        self.storage
+            .delete_object(&entry.metadata_path)
+            .await
+            .context("deleting metadata")?;
+
+        let index_bytes = {
+            let mut index = self.index.write().await;
+            if let Some(contract_entry) = index.contracts.get_mut(contract) {
+                contract_entry.programs.remove(program_id);
+                if contract_entry.programs.is_empty() {
+                    index.contracts.remove(contract);
+                }
+            }
+            serde_json::to_vec(&*index).context("serializing index")?
+        };
+        self.storage
+            .write_object(INDEX_FILE_NAME, &index_bytes)
+            .await
+            .context("writing index")?;
+
+        {
+            let mut cache = self.cache.write().await;
+            cache.remove_program(contract, program_id);
+        }
+
+        self.metrics
+            .requests
+            .with_label_values(&["delete_program"])
+            .inc();
+
+        Ok(true)
+    }
+
+    pub async fn delete_contract(&self, contract: &str) -> Result<bool> {
+        let entries = {
+            let index = self.index.read().await;
+            index
+                .contracts
+                .get(contract)
+                .map(|entry| entry.programs.values().cloned().collect::<Vec<_>>())
+        };
+        let Some(entries) = entries else {
+            return Ok(false);
+        };
+
+        for entry in &entries {
+            self.storage
+                .delete_object(&entry.object_path)
+                .await
+                .with_context(|| format!("deleting elf {}", entry.object_path))?;
+            self.storage
+                .delete_object(&entry.metadata_path)
+                .await
+                .with_context(|| format!("deleting metadata {}", entry.metadata_path))?;
+        }
+
+        let index_bytes = {
+            let mut index = self.index.write().await;
+            index.contracts.remove(contract);
+            serde_json::to_vec(&*index).context("serializing index")?
+        };
+        self.storage
+            .write_object(INDEX_FILE_NAME, &index_bytes)
+            .await
+            .context("writing index")?;
+
+        {
+            let mut cache = self.cache.write().await;
+            cache.remove_contract(contract);
+        }
+
+        self.metrics
+            .requests
+            .with_label_values(&["delete_contract"])
+            .inc();
+
+        Ok(true)
+    }
 }
 
 #[derive(Default)]
@@ -277,6 +373,19 @@ impl BinaryCache {
         while entries.len() > 2 {
             entries.pop_back();
         }
+    }
+
+    fn remove_program(&mut self, contract: &str, program_id: &str) {
+        if let Some(entries) = self.per_contract.get_mut(contract) {
+            entries.retain(|entry| entry.program_id != program_id);
+            if entries.is_empty() {
+                self.per_contract.remove(contract);
+            }
+        }
+    }
+
+    fn remove_contract(&mut self, contract: &str) {
+        self.per_contract.remove(contract);
     }
 }
 

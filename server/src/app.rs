@@ -44,19 +44,28 @@ impl Module for AppModule {
         let state = RouterCtx {
             registry: Arc::new(registry),
             api_key: ctx.config.api_key.clone(),
+            admin_key: ctx.config.admin_key.clone(),
         };
 
         // Créer un middleware CORS
         let cors = CorsLayer::new()
             .allow_origin(Any) // Permet toutes les origines (peut être restreint)
-            .allow_methods(vec![Method::GET, Method::POST]) // Permet les méthodes nécessaires
+            .allow_methods(vec![Method::GET, Method::POST, Method::DELETE]) // Permet les méthodes nécessaires
             .allow_headers(Any); // Permet tous les en-têtes
 
         let api = Router::new()
             .route("/_health", get(health))
             .route("/api/elfs", get(list_elfs))
-            .route("/api/elfs/{contract}", get(list_contract).post(upload_elf))
-            .route("/api/elfs/{contract}/{program_id}", get(download_elf))
+            .route(
+                "/api/elfs/{contract}",
+                get(list_contract)
+                    .post(upload_elf)
+                    .delete(delete_contract),
+            )
+            .route(
+                "/api/elfs/{contract}/{program_id}",
+                get(download_elf).delete(delete_program),
+            )
             .with_state(state)
             .layer(cors);
 
@@ -83,6 +92,7 @@ impl Module for AppModule {
 struct RouterCtx {
     registry: Arc<RegistryService>,
     api_key: String,
+    admin_key: String,
 }
 
 async fn health() -> impl IntoResponse {
@@ -233,6 +243,43 @@ async fn list_contract(
     }
 }
 
+async fn delete_program(
+    State(state): State<RouterCtx>,
+    Path((contract, program_id)): Path<(String, String)>,
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
+    require_api_key(&headers, &state.admin_key)?;
+    validate_contract_name(&contract)?;
+    let deleted = state
+        .registry
+        .delete_program(&contract, &program_id)
+        .await
+        .map_err(|err| AppError(StatusCode::INTERNAL_SERVER_ERROR, err))?;
+    if deleted {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        Ok(StatusCode::NOT_FOUND.into_response())
+    }
+}
+
+async fn delete_contract(
+    State(state): State<RouterCtx>,
+    Path(contract): Path<String>,
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
+    require_api_key(&headers, &state.admin_key)?;
+    validate_contract_name(&contract)?;
+    let deleted = state
+        .registry
+        .delete_contract(&contract)
+        .await
+        .map_err(|err| AppError(StatusCode::INTERNAL_SERVER_ERROR, err))?;
+    if deleted {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        Ok(StatusCode::NOT_FOUND.into_response())
+    }
+}
 #[tracing::instrument(skip(state))]
 async fn download_elf(
     State(state): State<RouterCtx>,

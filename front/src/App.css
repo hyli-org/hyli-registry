@@ -157,6 +157,31 @@ body {
   flex: 1 1 280px;
 }
 
+.controls-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-login {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-login input {
+  min-width: 200px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--surface-strong);
+  font-size: 14px;
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+}
+
 .search input {
   width: 100%;
   padding: 14px 18px;
@@ -184,9 +209,23 @@ body {
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
 
+.ghost {
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .refresh:hover {
   transform: translateY(-2px);
   box-shadow: 0 16px 30px rgba(240, 98, 74, 0.3);
+}
+
+.ghost:hover {
+  transform: translateY(-1px);
 }
 
 .status-panel {
@@ -244,6 +283,13 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+}
+
+.contract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
 .contract-card h2 {
@@ -343,6 +389,24 @@ body {
   border: 1px solid var(--edge);
   background: rgba(255, 255, 255, 0.9);
   transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.danger {
+  border: 1px solid rgba(181, 42, 18, 0.35);
+  background: rgba(181, 42, 18, 0.12);
+  color: #8a1d0c;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.danger:disabled,
+.refresh:disabled,
+.ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .download:hover {
