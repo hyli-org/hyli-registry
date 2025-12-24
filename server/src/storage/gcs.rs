@@ -60,6 +60,7 @@ impl StorageBackend for GcsStorageBackend {
         "gcs"
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     async fn read_object(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let object = self.object_path(path);
         info!("Reading object from GCS at path: {}", object);
@@ -79,6 +80,7 @@ impl StorageBackend for GcsStorageBackend {
         }
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     async fn write_object(&self, path: &str, data: &[u8]) -> Result<()> {
         let object = self.object_path(path);
         info!("Writing object to GCS at path: {}", object);
@@ -95,6 +97,7 @@ impl StorageBackend for GcsStorageBackend {
         Ok(())
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     async fn list_objects(&self, prefix: Option<&str>) -> Result<Vec<String>> {
         info!("Listing objects in GCS with prefix: {:?}", prefix);
         let list_prefix = match (self.prefix.as_deref(), prefix) {
@@ -131,6 +134,7 @@ impl StorageBackend for GcsStorageBackend {
         Ok(objects)
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     async fn delete_object(&self, path: &str) -> Result<()> {
         let object = self.object_path(path);
         info!("Deleting object from GCS at path: {}", object);

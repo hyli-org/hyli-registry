@@ -50,6 +50,7 @@ impl StorageBackend for LocalStorageBackend {
         "local"
     }
 
+    #[tracing::instrument(skip(self))]
     async fn read_object(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let path = self.resolve_path(path);
         match fs::read(path).await {
@@ -59,6 +60,7 @@ impl StorageBackend for LocalStorageBackend {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn write_object(&self, path: &str, data: &[u8]) -> Result<()> {
         info!("Writing object to local storage at path: {}", path);
         let path = self.resolve_path(path);
@@ -68,6 +70,7 @@ impl StorageBackend for LocalStorageBackend {
         fs::write(path, data).await.context("writing local object")
     }
 
+    #[tracing::instrument(skip(self))]
     async fn list_objects(&self, prefix: Option<&str>) -> Result<Vec<String>> {
         let base = match prefix {
             Some(prefix) => self.resolve_path(prefix),
@@ -89,6 +92,7 @@ impl StorageBackend for LocalStorageBackend {
         Ok(objects)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn delete_object(&self, path: &str) -> Result<()> {
         let path = self.resolve_path(path);
         match fs::remove_file(path).await {

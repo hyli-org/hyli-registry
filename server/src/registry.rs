@@ -92,6 +92,7 @@ impl RegistryService {
         })
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn list_all(&self) -> HashMap<String, Vec<ProgramInfo>> {
         let index = self.index.read().await;
         self.metrics.requests.with_label_values(&["list_all"]).inc();
@@ -109,6 +110,7 @@ impl RegistryService {
             .collect()
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn list_contract(&self, contract: &str) -> Option<Vec<ProgramInfo>> {
         let index = self.index.read().await;
         self.metrics
@@ -124,6 +126,7 @@ impl RegistryService {
         })
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn upload(
         &self,
         contract: &str,
@@ -200,6 +203,7 @@ impl RegistryService {
         Ok(entry)
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn download(&self, contract: &str, program_id: &str) -> Result<Option<Bytes>> {
         if let Some(bytes) = self.cache.write().await.get_and_touch(contract, program_id) {
             self.metrics.cache_hits.inc();
@@ -249,6 +253,7 @@ impl RegistryService {
         Ok(Some(bytes))
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn delete_program(&self, contract: &str, program_id: &str) -> Result<bool> {
         let entry = {
             let index = self.index.read().await;
@@ -299,6 +304,7 @@ impl RegistryService {
         Ok(true)
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn delete_contract(&self, contract: &str) -> Result<bool> {
         let entries = {
             let index = self.index.read().await;
@@ -352,6 +358,7 @@ struct BinaryCache {
 }
 
 impl BinaryCache {
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     fn get_and_touch(&mut self, contract: &str, program_id: &str) -> Option<Bytes> {
         let entries = self.per_contract.get_mut(contract)?;
         let position = entries
@@ -363,6 +370,7 @@ impl BinaryCache {
         Some(bytes)
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     fn insert(&mut self, contract: &str, program_id: &str, bytes: Bytes) {
         let entries = self.per_contract.entry(contract.to_string()).or_default();
         entries.retain(|entry| entry.program_id != program_id);
@@ -375,6 +383,7 @@ impl BinaryCache {
         }
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     fn remove_program(&mut self, contract: &str, program_id: &str) {
         if let Some(entries) = self.per_contract.get_mut(contract) {
             entries.retain(|entry| entry.program_id != program_id);
@@ -384,6 +393,7 @@ impl BinaryCache {
         }
     }
 
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     fn remove_contract(&mut self, contract: &str) {
         self.per_contract.remove(contract);
     }

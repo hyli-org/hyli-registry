@@ -58,9 +58,7 @@ impl Module for AppModule {
             .route("/api/elfs", get(list_elfs))
             .route(
                 "/api/elfs/{contract}",
-                get(list_contract)
-                    .post(upload_elf)
-                    .delete(delete_contract),
+                get(list_contract).post(upload_elf).delete(delete_contract),
             )
             .route(
                 "/api/elfs/{contract}/{program_id}",
@@ -243,6 +241,7 @@ async fn list_contract(
     }
 }
 
+#[tracing::instrument(skip(state, headers))]
 async fn delete_program(
     State(state): State<RouterCtx>,
     Path((contract, program_id)): Path<(String, String)>,
@@ -262,6 +261,7 @@ async fn delete_program(
     }
 }
 
+#[tracing::instrument(skip(state, headers))]
 async fn delete_contract(
     State(state): State<RouterCtx>,
     Path(contract): Path<String>,
@@ -280,6 +280,7 @@ async fn delete_contract(
         Ok(StatusCode::NOT_FOUND.into_response())
     }
 }
+
 #[tracing::instrument(skip(state))]
 async fn download_elf(
     State(state): State<RouterCtx>,
