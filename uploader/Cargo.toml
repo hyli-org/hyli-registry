@@ -1,7 +1,11 @@
 [package]
 name = "hyli-registry-uploader"
+description = "Hyli Registry Uploader"
 version = "0.1.0"
-edition = "2021"
+license = "MIT"
+edition = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
 
 [lib]
 name = "hyli_registry_uploader"

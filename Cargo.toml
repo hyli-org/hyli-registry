@@ -2,6 +2,11 @@
 resolver = "2"
 members = ["server", "uploader"]
 
+[workspace.package]
+edition = "2021"
+homepage = "https://hyli.org/"
+repository = "https://github.com/hyli-org/hyli-registry/"
+
 [workspace.dependencies]
 sdk = { git = "https://github.com/hyli-org/hyli.git", package = "hyli-contract-sdk", branch = "main" }
 client-sdk = { git = "https://github.com/hyli-org/hyli.git", default-features = false, package = "hyli-client-sdk", branch = "main" }
@@ -31,7 +36,3 @@ tracing = "0.1.41"
 utoipa = "5.3.1"
 utoipa-axum = "0.2.0"
 utoipa-swagger-ui = { version = "9.0.2", features = ["vendored"] }
-
-[workspace.package]
-version = "0.4.1"
-edition = "2021"
