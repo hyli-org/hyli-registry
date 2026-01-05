@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{anyhow, Context, Result};
+use serde_json::Value as JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct UploadRequest<'a> {
@@ -34,24 +35,18 @@ pub fn program_id_from_file(path: &Path) -> Result<String> {
     Ok(text.trim().to_string())
 }
 
-pub async fn upload(request: UploadRequest<'_>) -> Result<UploadResponse> {
-    let binary_bytes = fs::read(request.binary_path).with_context(|| {
-        format!(
-            "Failed to read binary file {}",
-            request.binary_path.display()
-        )
-    })?;
-
-    let metadata = serde_json::json!({
-        "toolchain": request.toolchain,
-        "commit": request.commit,
-        "zkvm": request.zkvm,
-    })
-    .to_string();
-
+/// Core upload function that sends binary bytes to the registry
+async fn upload_bytes(
+    server_url: &str,
+    api_key: &str,
+    contract: &str,
+    program_id: &str,
+    binary_bytes: Vec<u8>,
+    metadata: JsonValue,
+) -> Result<UploadResponse> {
     let form = reqwest::multipart::Form::new()
-        .text("program_id", request.program_id.to_string())
-        .text("metadata", metadata)
+        .text("program_id", program_id.to_string())
+        .text("metadata", metadata.to_string())
         .part(
             "file",
             reqwest::multipart::Part::bytes(binary_bytes)
@@ -59,16 +54,12 @@ pub async fn upload(request: UploadRequest<'_>) -> Result<UploadResponse> {
                 .mime_str("application/octet-stream")?,
         );
 
-    let url = format!(
-        "{}/api/elfs/{}",
-        request.server_url.trim_end_matches('/'),
-        request.contract
-    );
+    let url = format!("{}/api/elfs/{}", server_url.trim_end_matches('/'), contract);
 
     let client = reqwest::Client::new();
     let response = client
         .post(url)
-        .header("x-api-key", request.api_key)
+        .header("x-api-key", api_key)
         .multipart(form)
         .send()
         .await
@@ -83,7 +74,72 @@ pub async fn upload(request: UploadRequest<'_>) -> Result<UploadResponse> {
     let body = response.text().await.unwrap_or_default();
 
     Ok(UploadResponse {
-        program_id: request.program_id.to_string(),
+        program_id: program_id.to_string(),
         body,
     })
+}
+
+/// Upload an ELF binary with minimal metadata (zkvm only)
+/// Reads server URL from HYLI_REGISTRY_URL env var and API key from HYLI_REGISTRY_API_KEY
+/// Additional metadata fields can be provided via the `additional_metadata` parameter
+pub async fn upload_elf(
+    elf_bytes: &[u8],
+    program_id: &str,
+    contract: &str,
+    zkvm: &str,
+    additional_metadata: Option<JsonValue>,
+) -> Result<UploadResponse> {
+    let server_url = std::env::var("HYLI_REGISTRY_URL")
+        .context("HYLI_REGISTRY_URL environment variable not set")?;
+    let api_key = std::env::var("HYLI_REGISTRY_API_KEY")
+        .context("HYLI_REGISTRY_API_KEY environment variable not set")?;
+
+    let mut metadata = serde_json::json!({
+        "zkvm": zkvm,
+    });
+
+    // Merge additional metadata if provided
+    if let Some(additional) = additional_metadata {
+        if let (Some(base_obj), Some(add_obj)) = (metadata.as_object_mut(), additional.as_object())
+        {
+            for (key, value) in add_obj {
+                base_obj.insert(key.clone(), value.clone());
+            }
+        }
+    }
+
+    upload_bytes(
+        &server_url,
+        &api_key,
+        contract,
+        program_id,
+        elf_bytes.to_vec(),
+        metadata,
+    )
+    .await
+}
+
+pub async fn upload(request: UploadRequest<'_>) -> Result<UploadResponse> {
+    let binary_bytes = fs::read(request.binary_path).with_context(|| {
+        format!(
+            "Failed to read binary file {}",
+            request.binary_path.display()
+        )
+    })?;
+
+    let metadata = serde_json::json!({
+        "toolchain": request.toolchain,
+        "commit": request.commit,
+        "zkvm": request.zkvm,
+    });
+
+    upload_bytes(
+        request.server_url,
+        request.api_key,
+        request.contract,
+        request.program_id,
+        binary_bytes,
+        metadata,
+    )
+    .await
 }
