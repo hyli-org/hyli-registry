@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use hyli_registry_uploader::{program_id_hex_from_file, upload, UploadRequest};
+use hyli_registry::{program_id_hex_from_file, upload, UploadRequest};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "Upload ZKVM binaries to the Hyli registry")]

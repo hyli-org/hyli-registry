@@ -1,14 +1,14 @@
 [package]
-name = "hyli-registry-uploader"
-description = "Hyli Registry Uploader"
-version = "0.2.1"
+name = "hyli-registry"
+description = "Hyli Registry - Upload and download ELF binaries"
+version = "0.3.0"
 license = "MIT"
 edition = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }
 
 [lib]
-name = "hyli_registry_uploader"
+name = "hyli_registry"
 path = "src/lib.rs"
 
 [dependencies]

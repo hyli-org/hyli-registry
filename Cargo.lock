@@ -3916,8 +3916,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyli-registry-uploader"
-version = "0.2.1"
+name = "hyli-registry"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",

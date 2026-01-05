@@ -168,3 +168,62 @@ pub async fn upload(request: UploadRequest<'_>) -> Result<UploadResponse> {
     )
     .await
 }
+
+/// Download an ELF binary from the registry
+/// Reads server URL from HYLI_REGISTRY_URL env var and API key from HYLI_REGISTRY_API_KEY
+pub async fn download_elf(contract: &str, program_id: &str) -> Result<Vec<u8>> {
+    tracing::debug!("Reading registry configuration from environment variables");
+    let server_url = std::env::var("HYLI_REGISTRY_URL")
+        .context("HYLI_REGISTRY_URL environment variable not set")?;
+    let api_key = std::env::var("HYLI_REGISTRY_API_KEY")
+        .context("HYLI_REGISTRY_API_KEY environment variable not set")?;
+
+    tracing::info!(
+        program_id = %program_id,
+        contract = %contract,
+        "Downloading ELF from registry"
+    );
+
+    let url = format!(
+        "{}/api/elfs/{}/{}",
+        server_url.trim_end_matches('/'),
+        contract,
+        program_id
+    );
+    tracing::debug!(url = %url, "Sending GET request");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .header("x-api-key", &api_key)
+        .send()
+        .await
+        .context("Failed to send download request")?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        tracing::error!(
+            status = %status,
+            body = %body,
+            program_id = %program_id,
+            contract = %contract,
+            "Download failed"
+        );
+        return Err(anyhow!("Download failed: {status} {body}"));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .context("Failed to read response body")?;
+
+    tracing::info!(
+        program_id = %program_id,
+        contract = %contract,
+        size = %bytes.len(),
+        "Download successful"
+    );
+
+    Ok(bytes.to_vec())
+}

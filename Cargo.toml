@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["server", "uploader"]
+members = ["server", "crate"]
 
 [workspace.package]
 edition = "2021"
