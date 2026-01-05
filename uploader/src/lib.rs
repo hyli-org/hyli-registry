@@ -44,6 +44,15 @@ async fn upload_bytes(
     binary_bytes: Vec<u8>,
     metadata: JsonValue,
 ) -> Result<UploadResponse> {
+    let binary_size = binary_bytes.len();
+    tracing::info!(
+        program_id = %program_id,
+        contract = %contract,
+        binary_size = %binary_size,
+        metadata = %metadata,
+        "Starting upload to registry"
+    );
+
     let form = reqwest::multipart::Form::new()
         .text("program_id", program_id.to_string())
         .text("metadata", metadata.to_string())
@@ -55,6 +64,7 @@ async fn upload_bytes(
         );
 
     let url = format!("{}/api/elfs/{}", server_url.trim_end_matches('/'), contract);
+    tracing::debug!(url = %url, "Sending POST request");
 
     let client = reqwest::Client::new();
     let response = client
@@ -65,13 +75,24 @@ async fn upload_bytes(
         .await
         .context("Failed to send upload request")?;
 
-    if !response.status().is_success() {
-        let status = response.status();
+    let status = response.status();
+    if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
+        tracing::error!(
+            status = %status,
+            body = %body,
+            program_id = %program_id,
+            "Upload failed"
+        );
         return Err(anyhow!("Upload failed: {status} {body}"));
     }
 
     let body = response.text().await.unwrap_or_default();
+    tracing::info!(
+        program_id = %program_id,
+        status = %status,
+        "Upload successful"
+    );
 
     Ok(UploadResponse {
         program_id: program_id.to_string(),
@@ -89,10 +110,13 @@ pub async fn upload_elf(
     zkvm: &str,
     additional_metadata: Option<JsonValue>,
 ) -> Result<UploadResponse> {
+    tracing::debug!("Reading registry configuration from environment variables");
     let server_url = std::env::var("HYLI_REGISTRY_URL")
         .context("HYLI_REGISTRY_URL environment variable not set")?;
     let api_key = std::env::var("HYLI_REGISTRY_API_KEY")
         .context("HYLI_REGISTRY_API_KEY environment variable not set")?;
+
+    tracing::debug!(server_url = %server_url, "Using registry URL from environment");
 
     let mut metadata = serde_json::json!({
         "zkvm": zkvm,
@@ -102,6 +126,7 @@ pub async fn upload_elf(
     if let Some(additional) = additional_metadata {
         if let (Some(base_obj), Some(add_obj)) = (metadata.as_object_mut(), additional.as_object())
         {
+            tracing::debug!("Merging additional metadata fields");
             for (key, value) in add_obj {
                 base_obj.insert(key.clone(), value.clone());
             }

@@ -133,8 +133,8 @@ fn validate_contract_name(contract: &str) -> Result<(), AppError> {
 
 #[derive(Debug, serde::Deserialize)]
 struct UploadMetadataPayload {
-    toolchain: String,
-    commit: String,
+    toolchain: Option<String>,
+    commit: Option<String>,
     zkvm: String,
 }
 

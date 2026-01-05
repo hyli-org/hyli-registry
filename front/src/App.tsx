@@ -147,8 +147,8 @@ function App() {
         return programs.some(
           (program) =>
             program.program_id.toLowerCase().includes(query) ||
-            program.metadata.toolchain.toLowerCase().includes(query) ||
-            program.metadata.zkvm.toLowerCase().includes(query),
+            program.metadata.toolchain?.toLowerCase().includes(query) ||
+            program.metadata.zkvm?.toLowerCase().includes(query),
         );
       })
       .sort(([a], [b]) => a.localeCompare(b));
@@ -367,12 +367,16 @@ function App() {
                         </div>
                       </div>
                       <div className="program-actions">
-                        <span className="badge">
-                          {program.metadata.toolchain}
-                        </span>
-                        <span className="badge mono">
-                          commit: {program.metadata.commit.slice(0, 8)}
-                        </span>
+                        {program.metadata.toolchain && (
+                          <span className="badge">
+                            {program.metadata.toolchain}
+                          </span>
+                        )}
+                        {program.metadata.commit && (
+                          <span className="badge mono">
+                            commit: {program.metadata.commit.slice(0, 8)}
+                          </span>
+                        )}
                         <a
                           className="download"
                           href={buildUrl(

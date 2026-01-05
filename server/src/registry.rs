@@ -38,8 +38,8 @@ pub struct ProgramEntry {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramMetadata {
-    pub toolchain: String,
-    pub commit: String,
+    pub toolchain: Option<String>,
+    pub commit: Option<String>,
     pub zkvm: String,
 }
 
