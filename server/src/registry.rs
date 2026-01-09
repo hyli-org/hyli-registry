@@ -627,8 +627,8 @@ mod tests {
 
     fn sample_metadata(toolchain: &str) -> ProgramMetadata {
         ProgramMetadata {
-            toolchain: toolchain.to_string(),
-            commit: "abc123".to_string(),
+            toolchain: Some(toolchain.to_string()),
+            commit: Some("abc123".to_string()),
             zkvm: "sp1".to_string(),
         }
     }
@@ -684,7 +684,7 @@ mod tests {
             .get(contract)
             .and_then(|contract_entry| contract_entry.programs.get(program_id))
             .expect("entry present");
-        assert_eq!(entry.metadata.toolchain, "toolchain-v2");
+        assert_eq!(entry.metadata.toolchain, Some("toolchain-v2".to_string()));
         assert_eq!(entry.size_bytes, 6);
 
         let stored = service
@@ -702,7 +702,10 @@ mod tests {
             .expect("metadata exists");
         let stored_entry: ProgramEntry =
             serde_json::from_slice(&metadata_bytes).expect("parse metadata");
-        assert_eq!(stored_entry.metadata.toolchain, "toolchain-v2");
+        assert_eq!(
+            stored_entry.metadata.toolchain,
+            Some("toolchain-v2".to_string())
+        );
         assert_eq!(stored_entry.size_bytes, 6);
     }
 
