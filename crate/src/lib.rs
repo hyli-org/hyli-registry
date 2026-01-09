@@ -89,7 +89,6 @@ async fn upload_bytes(
 
     let body = response.text().await.unwrap_or_default();
     tracing::info!(
-        program_id = %program_id,
         status = %status,
         "Upload successful"
     );
@@ -217,13 +216,6 @@ pub async fn download_elf(contract: &str, program_id: &str) -> Result<Vec<u8>> {
         .bytes()
         .await
         .context("Failed to read response body")?;
-
-    tracing::info!(
-        program_id = %program_id,
-        contract = %contract,
-        size = %bytes.len(),
-        "Download successful"
-    );
 
     Ok(bytes.to_vec())
 }
