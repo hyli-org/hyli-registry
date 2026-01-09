@@ -80,7 +80,7 @@ impl StorageBackend for GcsStorageBackend {
         }
     }
 
-    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self, data)))]
     async fn write_object(&self, path: &str, data: &[u8]) -> Result<()> {
         let object = self.object_path(path);
         info!("Writing object to GCS at path: {}", object);

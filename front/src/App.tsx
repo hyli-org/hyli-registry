@@ -16,7 +16,32 @@ type ProgramInfo = {
 
 type RegistryIndex = Record<string, ProgramInfo[]>;
 
-const baseUrl = import.meta.env.VITE_SERVER_BASE_URL || "";
+// Extend window interface for runtime environment variables
+declare global {
+  interface Window {
+    ENV?: {
+      REGISTRY_SERVER_BASE_URL?: string;
+    };
+  }
+}
+
+// Get environment variable from runtime (Docker) or build-time (Vite)
+const getEnvVar = (key: keyof NonNullable<Window["ENV"]>): string => {
+  // Try runtime environment first (set by docker-entrypoint.sh)
+  const runtimeValue =
+    typeof window !== "undefined" ? window.ENV?.[key] : undefined;
+
+  // Check if runtime value exists and is not a placeholder (placeholders look like ${VAR_NAME})
+  if (runtimeValue && !runtimeValue.startsWith("${")) {
+    return runtimeValue;
+  }
+
+  // Fall back to build-time environment (for local development)
+  return import.meta.env[key] || "";
+};
+
+const baseUrl =
+  getEnvVar("REGISTRY_SERVER_BASE_URL") || import.meta.env.VITE_SERVER_BASE_URL;
 
 const buildUrl = (path: string) => {
   if (!baseUrl) {

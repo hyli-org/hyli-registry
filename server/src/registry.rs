@@ -126,7 +126,10 @@ impl RegistryService {
         })
     }
 
-    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
+    #[cfg_attr(
+        feature = "instrumentation",
+        tracing::instrument(skip(self, program_id, metadata, bytes))
+    )]
     pub async fn upload(
         &self,
         contract: &str,

@@ -60,7 +60,7 @@ impl StorageBackend for LocalStorageBackend {
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self, data))]
     async fn write_object(&self, path: &str, data: &[u8]) -> Result<()> {
         info!("Writing object to local storage at path: {}", path);
         let path = self.resolve_path(path);

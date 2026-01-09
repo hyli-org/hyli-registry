@@ -20,12 +20,20 @@ RUN bun run build
 # Étape de production
 FROM nginx:1.21.5-alpine AS production
 
+# Install gettext for envsubst
+RUN apk add --no-cache gettext
+
 # Copier les fichiers de build depuis l'étape de build
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy and setup entrypoint script
+COPY front/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Exposer le port 80
 EXPOSE 80
 
-# Démarrer Nginx
+# Use entrypoint script to substitute env vars at runtime
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
 

@@ -3,7 +3,7 @@ FROM rust:latest AS builder
 WORKDIR /app
 COPY .cargo .cargo
 COPY ./server ./server
-COPY ./uploader ./uploader
+COPY ./crate ./crate
 COPY Cargo.toml . 
 COPY Cargo.lock .
 
@@ -16,7 +16,7 @@ WORKDIR /app
 
 COPY --from=builder /app/target/debug/server ./
 
-EXPOSE 4000
+EXPOSE 9003
 
 CMD ["./server"]
 
