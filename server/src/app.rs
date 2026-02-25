@@ -121,7 +121,7 @@ fn validate_contract_name(contract: &str) -> Result<(), AppError> {
     if contract.is_empty()
         || !contract
             .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
     {
         return Err(AppError(
             StatusCode::BAD_REQUEST,
