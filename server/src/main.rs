@@ -4,7 +4,7 @@ use axum::Router;
 use clap::Parser;
 use conf::Conf;
 use hyli_modules::{
-    bus::{metrics::BusMetrics, SharedMessageBus},
+    bus::SharedMessageBus,
     modules::{
         rest::{RestApi, RestApiRunContext},
         BuildApiContextInner, ModulesHandler,
@@ -71,11 +71,11 @@ async fn main() -> Result<()> {
 
     info!("Starting app with config: {:?}", &config);
 
-    let bus = SharedMessageBus::new(BusMetrics::global(config.id.clone()));
+    let bus = SharedMessageBus::new();
 
     std::fs::create_dir_all(&config.data_directory).context("creating data directory")?;
 
-    let mut handler = ModulesHandler::new(&bus).await;
+    let mut handler = ModulesHandler::new(&bus, config.data_directory.clone().into())?;
 
     let api_ctx = Arc::new(BuildApiContextInner {
         router: Mutex::new(Some(Router::new())),
@@ -108,7 +108,6 @@ async fn main() -> Result<()> {
         .build_module::<RestApi>(RestApiRunContext {
             port: args.server_port.unwrap_or(config.rest_server_port),
             max_body_size: config.rest_server_max_body_size,
-            registry: prometheus::default_registry().clone(),
             router,
             openapi,
             info: NodeInfo {

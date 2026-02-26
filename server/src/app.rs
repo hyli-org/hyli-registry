@@ -9,7 +9,7 @@ use axum::{
     routing::get,
     Router,
 };
-use client_sdk::contract_indexer::AppError;
+use client_sdk::AppError;
 
 use hyli_modules::{
     bus::SharedMessageBus,
