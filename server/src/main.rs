@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
 
     std::fs::create_dir_all(&config.data_directory).context("creating data directory")?;
 
-    let mut handler = ModulesHandler::new(&bus, config.data_directory.clone().into())?;
+    let mut handler = ModulesHandler::new(&bus, config.data_directory.clone())?;
 
     let api_ctx = Arc::new(BuildApiContextInner {
         router: Mutex::new(Some(Router::new())),

@@ -16,6 +16,7 @@ use hyli_modules::{
     log_error, module_bus_client, module_handle_messages,
     modules::{BuildApiContextInner, Module},
 };
+use sdk::ContractName;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::conf::Conf;
@@ -117,20 +118,6 @@ fn require_api_key(headers: &HeaderMap, expected: &str) -> Result<(), AppError> 
     Ok(())
 }
 
-fn validate_contract_name(contract: &str) -> Result<(), AppError> {
-    if contract.is_empty()
-        || !contract
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
-    {
-        return Err(AppError(
-            StatusCode::BAD_REQUEST,
-            anyhow::anyhow!("Invalid contract name"),
-        ));
-    }
-    Ok(())
-}
-
 #[derive(Debug, serde::Deserialize)]
 struct UploadMetadataPayload {
     toolchain: Option<String>,
@@ -150,12 +137,12 @@ struct UploadResponse {
 #[tracing::instrument(skip(state, headers, multipart))]
 async fn upload_elf(
     State(state): State<RouterCtx>,
-    Path(contract): Path<String>,
+    Path(contract): Path<ContractName>,
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<Json<UploadResponse>, AppError> {
     require_api_key(&headers, &state.api_key)?;
-    validate_contract_name(&contract)?;
+    contract.validate().map_err(bad_request)?;
 
     let mut program_id = None;
     let mut metadata = None;
@@ -203,7 +190,7 @@ async fn upload_elf(
     let entry = log_error!(
         state
             .registry
-            .upload(&contract, &program_id, metadata, file_bytes)
+            .upload(&contract.0, &program_id, metadata, file_bytes)
             .await,
         "Uploading ELF"
     )
@@ -229,10 +216,11 @@ async fn list_elfs(
 #[tracing::instrument(skip(state))]
 async fn list_contract(
     State(state): State<RouterCtx>,
-    Path(contract): Path<String>,
+    Path(contract): Path<ContractName>,
 ) -> Result<Json<Vec<ProgramInfo>>, AppError> {
-    validate_contract_name(&contract)?;
-    match state.registry.list_contract(&contract).await {
+    contract.validate().map_err(bad_request)?;
+
+    match state.registry.list_contract(&contract.0).await {
         Some(entries) => Ok(Json(entries)),
         None => Err(AppError(
             StatusCode::NOT_FOUND,
@@ -244,14 +232,15 @@ async fn list_contract(
 #[tracing::instrument(skip(state, headers))]
 async fn delete_program(
     State(state): State<RouterCtx>,
-    Path((contract, program_id)): Path<(String, String)>,
+    Path((contract, program_id)): Path<(ContractName, String)>,
     headers: HeaderMap,
 ) -> Result<Response, AppError> {
     require_api_key(&headers, &state.admin_key)?;
-    validate_contract_name(&contract)?;
+    contract.validate().map_err(bad_request)?;
+
     let deleted = state
         .registry
-        .delete_program(&contract, &program_id)
+        .delete_program(&contract.0, &program_id)
         .await
         .map_err(|err| AppError(StatusCode::INTERNAL_SERVER_ERROR, err))?;
     if deleted {
@@ -264,14 +253,15 @@ async fn delete_program(
 #[tracing::instrument(skip(state, headers))]
 async fn delete_contract(
     State(state): State<RouterCtx>,
-    Path(contract): Path<String>,
+    Path(contract): Path<ContractName>,
     headers: HeaderMap,
 ) -> Result<Response, AppError> {
     require_api_key(&headers, &state.admin_key)?;
-    validate_contract_name(&contract)?;
+    contract.validate().map_err(bad_request)?;
+
     let deleted = state
         .registry
-        .delete_contract(&contract)
+        .delete_contract(&contract.0)
         .await
         .map_err(|err| AppError(StatusCode::INTERNAL_SERVER_ERROR, err))?;
     if deleted {
@@ -284,10 +274,11 @@ async fn delete_contract(
 #[tracing::instrument(skip(state))]
 async fn download_elf(
     State(state): State<RouterCtx>,
-    Path((contract, program_id)): Path<(String, String)>,
+    Path((contract, program_id)): Path<(ContractName, String)>,
 ) -> Result<Response, AppError> {
-    validate_contract_name(&contract)?;
-    let bytes = match state.registry.download(&contract, &program_id).await {
+    contract.validate().map_err(bad_request)?;
+
+    let bytes = match state.registry.download(&contract.0, &program_id).await {
         Ok(Some(bytes)) => bytes,
         Ok(None) => {
             return Err(AppError(
@@ -305,4 +296,8 @@ async fn download_elf(
         axum::http::HeaderValue::from_static("application/octet-stream"),
     );
     Ok(response)
+}
+
+fn bad_request(err: String) -> AppError {
+    AppError(StatusCode::BAD_REQUEST, anyhow::anyhow!(err))
 }
