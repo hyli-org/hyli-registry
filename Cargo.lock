@@ -2996,7 +2996,7 @@ dependencies = [
  "hyli-contract-sdk",
  "hyli-model",
  "hyli-net",
- "hyli-registry 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hyli-registry 0.4.0",
  "risc0-zkvm",
  "serde",
  "serde_json",
@@ -3143,6 +3143,8 @@ dependencies = [
 [[package]]
 name = "hyli-registry"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8e43a83cdc4241a80c7278451d32c70de53bc0b0ac090fea3be299ac62352e5"
 dependencies = [
  "anyhow",
  "clap",
@@ -3155,9 +3157,7 @@ dependencies = [
 
 [[package]]
 name = "hyli-registry"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8e43a83cdc4241a80c7278451d32c70de53bc0b0ac090fea3be299ac62352e5"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "clap",

@@ -58,6 +58,10 @@ impl Module for AppModule {
             .route("/_health", get(health))
             .route("/api/elfs", get(list_elfs))
             .route(
+                "/api/elfs/by-program/:program_id",
+                get(download_elf_by_program_id),
+            )
+            .route(
                 "/api/elfs/{contract}",
                 get(list_contract).post(upload_elf).delete(delete_contract),
             )
@@ -292,6 +296,30 @@ async fn download_elf(
     let mut response = bytes.into_response();
     let headers = response.headers_mut();
     headers.insert(
+        axum::http::header::CONTENT_TYPE,
+        axum::http::HeaderValue::from_static("application/octet-stream"),
+    );
+    Ok(response)
+}
+
+#[tracing::instrument(skip(state))]
+async fn download_elf_by_program_id(
+    State(state): State<RouterCtx>,
+    Path(program_id): Path<String>,
+) -> Result<Response, AppError> {
+    let bytes = match state.registry.download_by_program_id(&program_id).await {
+        Ok(Some(bytes)) => bytes,
+        Ok(None) => {
+            return Err(AppError(
+                StatusCode::NOT_FOUND,
+                anyhow::anyhow!("ELF not found"),
+            ))
+        }
+        Err(err) => return Err(AppError(StatusCode::INTERNAL_SERVER_ERROR, err)),
+    };
+
+    let mut response = bytes.into_response();
+    response.headers_mut().insert(
         axum::http::header::CONTENT_TYPE,
         axum::http::HeaderValue::from_static("application/octet-stream"),
     );
