@@ -257,6 +257,23 @@ impl RegistryService {
     }
 
     #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
+    pub async fn download_by_program_id(&self, program_id: &str) -> Result<Option<Bytes>> {
+        let (contract, pid) = {
+            let index = self.index.read().await;
+            let found = index.contracts.iter().find_map(|(contract, ci)| {
+                ci.programs
+                    .get(program_id)
+                    .map(|_| (contract.clone(), program_id.to_string()))
+            });
+            match found {
+                Some(pair) => pair,
+                None => return Ok(None),
+            }
+        };
+        self.download(&contract, &pid).await
+    }
+
+    #[cfg_attr(feature = "instrumentation", tracing::instrument(skip(self)))]
     pub async fn delete_program(&self, contract: &str, program_id: &str) -> Result<bool> {
         let entry = {
             let index = self.index.read().await;
