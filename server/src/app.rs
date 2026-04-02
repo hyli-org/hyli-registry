@@ -58,7 +58,7 @@ impl Module for AppModule {
             .route("/_health", get(health))
             .route("/api/elfs", get(list_elfs))
             .route(
-                "/api/elfs/by-program/:program_id",
+                "/api/elfs/by-program/{program_id}",
                 get(download_elf_by_program_id),
             )
             .route(
